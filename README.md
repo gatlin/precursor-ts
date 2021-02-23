@@ -48,7 +48,7 @@ let thirteen_factorial = new CESKM(parse_cbpv(`
 )
 `)).run().v;
 
-assert(thirteen_factorial,6227020800);
+assert(thirteen_factorial===6227020800);
 ```
 
 ## what's included
