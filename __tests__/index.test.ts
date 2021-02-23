@@ -15,7 +15,7 @@ describe('index', () => {
   });
 
   it('sanity check 2', () => {
-    expect(new CESKM(parse_cbpv("( (λ (x) (prim-mul x 2)) 210)")).
+    expect(new CESKM(parse_cbpv("( (\\ (x) (prim-mul x 2)) 210)")).
       run()).
       toStrictEqual({
         tag: 'NumV',

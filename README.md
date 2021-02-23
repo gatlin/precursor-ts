@@ -36,7 +36,7 @@ let thirteen_factorial = new CESKM(parse_cbpv(`
         (times-2 six)))
       (prim-mul 2 three-then-six)))
     (prim-add twelve 1))))
-  (factorial (λ (n) (letrec (
+  (factorial (\ (n) (letrec (
     (help (λ (n total)
       (let n (? n)
       (if (prim-lt n 2)
