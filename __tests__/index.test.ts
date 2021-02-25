@@ -208,4 +208,61 @@ describe('index', () => {
         v: 911672
       });
   });
+
+  it('sanity check 11', () => {
+      expect(new CESKM(parse_cbpv(`
+(letrec (
+  (foldr (λ (c e xs)
+    (let xs (? xs)
+    ((? xs) c e))))
+  (nil (λ ()
+    (! (λ (c e) e))))
+  (cons (λ (x xs)
+    (! (λ (c e)
+      ((? c) x (! ((? foldr) c e xs)))))))
+  (add (λ (a b)
+    (let a (? a)
+    (let b (? b)
+    (prim-add a b)))))
+)
+(let list-1 (! ((? nil)))
+((? foldr) add 23 list-1))
+)
+      `)).
+        run()).
+        toStrictEqual({
+          tag: 'NumV',
+          v: 23
+        });
+  });
+  it('sanity check 12', () => {
+      expect(new CESKM(parse_cbpv(`
+(letrec (
+  (foldr (λ (c e xs)
+    (let xs (? xs)
+    ((? xs) c e))))
+  (nil (λ ()
+    (! (λ (c e) e))))
+  (cons (λ (x xs)
+    (! (λ (c e)
+      ((? c) x (! ((? foldr) c e xs)))))))
+  (add (λ (a b)
+    (let a (? a)
+    (let b (? b)
+    (prim-add a b)))))
+)
+(let list-1 (! ((? cons)
+                  20
+                  (! ((? cons)
+                        10
+                        (! ((? nil)))))))
+((? foldr) add 23 list-1))
+)
+      `)).
+        run()).
+        toStrictEqual({
+          tag: 'NumV',
+          v: 53
+        });
+    })
 });

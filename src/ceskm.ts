@@ -79,6 +79,10 @@ export class CESKM {
   protected gensym(): string {
     return `#sym<${this.gensym_count++}>`; }
 
+  private copy_env(env: Env): Env {
+    return JSON.parse(JSON.stringify(env));
+  }
+
   /**
    * @method positive
    * @param { Cbpv } expr The positive expression we are evaluating.
@@ -133,7 +137,8 @@ export class CESKM {
         case 'AppA': {
           let vals = this.control.erands.map((erand: Cbpv) => this.positive(erand));
           this.control = this.control.op;
-          this.kontinuation = argk(vals, this.kontinuation);
+          let ak = argk(vals, JSON.parse(JSON.stringify(this.kontinuation)));
+          this.kontinuation = ak;
           break; }
         case 'LetA': {
           let { v, exp, body } = this.control;
@@ -196,7 +201,10 @@ export class CESKM {
               env_push_frame(frame, this.environment);
               this.kontinuation = this.kontinuation.kont;
               return this; }
-            default: throw new Error('invalid continuation for function'); }
+            default: {
+              console.log('control', JSON.stringify(this.control));
+              console.log('kontinuation', JSON.stringify(this.kontinuation));
+              throw new Error('invalid continuation for function'); }}
           finished = true;
           break; }
         default: finished = true; } }
