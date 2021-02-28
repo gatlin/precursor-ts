@@ -1,8 +1,21 @@
-import { CESKM, parse_cbpv } from "../src/index";
+import { CESKM, Value, Kont, Parser, build_cbpv, parse_cbpv } from "../src/index";
+
+class DebugMachine extends CESKM {
+  protected primop(op_sym: string, args: Value[]): Value {
+    switch (op_sym) {
+      case 'prim-mod': {
+        if ('NumV' === args[0].tag && 'NumV' === args[1].tag) {
+          return { tag: 'NumV', v: args[0].v % args[1].v };
+        }
+      }
+      default: return super.primop(op_sym, args);
+    }
+  }
+}
 
 describe('index', () => {
-  it('sanity check 1', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 1', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
   (sqr-int (λ (n) (prim-mul n n)))
 )
@@ -13,9 +26,8 @@ describe('index', () => {
         v: 4761
     });
   });
-
-  it('sanity check 2', () => {
-    expect(new CESKM(parse_cbpv("( (\\ (x) (prim-mul x 2)) 210)")).
+  test('sanity check 2', () => {
+    expect(new DebugMachine(parse_cbpv("( (\\ (x) (prim-mul x 2)) 210)")).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -23,8 +35,8 @@ describe('index', () => {
       });
   });
 
-  it('sanity check 3', () => {
-    expect(new CESKM(parse_cbpv("(let n (prim-add 1 2) (prim-mul n 2))")).
+  test('sanity check 3', () => {
+    expect(new DebugMachine(parse_cbpv("(let n (prim-add 1 2) (prim-mul n 2))")).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -32,8 +44,8 @@ describe('index', () => {
       });
   });
 
-  it('sanity check 4', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 4', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
   (fact-tailrec (λ (n total)
     (if (prim-eq n 2)
@@ -50,8 +62,8 @@ describe('index', () => {
       });
   });
 
-  it('sanity check 5', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 5', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
   (times (λ (a b) (prim-mul a b)))
 )
@@ -64,8 +76,8 @@ describe('index', () => {
       });
   });
 
-  it('sanity check 6', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 6', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (let f (reset (shift k k))
 (let n (f (prim-add 10 55))
 (prim-mul 3 n)))
@@ -76,9 +88,8 @@ describe('index', () => {
         v: 195
       });
   });
-
-  it('sanity check 7', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 7', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
   (seventeen (λ ()
     (let sixteen (reset
@@ -104,9 +115,8 @@ describe('index', () => {
         v: 355687428096000
       });
   });
-
-  it('sanity check 8', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 8', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
   (make-reducer (λ (initial-value) (letrec (
     (loop (λ (total first-run) (reset
@@ -132,9 +142,8 @@ describe('index', () => {
         v: 911666
       });
   });
-
-  it('sanity check 9', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 9', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
   (next (λ (gen)
@@ -161,9 +170,8 @@ describe('index', () => {
         v: 6
       });
   });
-
-  it('sanity check 10', () => {
-    expect(new CESKM(parse_cbpv(`
+  test('sanity check 10', () => {
+    expect(new DebugMachine(parse_cbpv(`
 (letrec (
 
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
@@ -176,11 +184,12 @@ describe('index', () => {
   (make-reducer (λ (initial-value) (letrec (
     (loop (λ (total first-run) (reset
       (let n (shift k k)
+      (let n (? n)
       (if (prim-and
             (prim-eq n 0)
             (prim-not first-run))
         total
-        ((? loop) (prim-add n total) #f  ))))))
+        ((? loop) (prim-add n total) #f  )))))))
     )
     ((? loop) initial-value #t)
   )))
@@ -207,5 +216,109 @@ describe('index', () => {
         tag: 'NumV',
         v: 911672
       });
+  });
+  test('sanity check 11', () => {
+    let machine = new DebugMachine(parse_cbpv(`
+(letrec (
+  (pair (\\ (a b)
+    (! (\\ (p) ((? p) a b)))))
+  (pair-fst (\\ (p)
+    ((? p) (! (\\ (a b) a)))))
+  (pair-snd (\\ (p)
+    ((? p) (! (\\ (a b) b)))))
+  (is-even (\\ (n)
+    (let n (? n)
+    (prim-eq 0 (prim-mod n 2)))))
+)
+(let p1 ((? pair) 3 is-even)
+(let num ((? pair-fst) p1)
+(let fn ((? pair-snd) p1)
+((? fn) num) )))
+)
+`));
+  try {
+    let res = machine.run();
+    expect(res).
+      toStrictEqual({
+        tag: "BoolV",
+        v: false
+    });
+  }
+  catch (e) {
+    console.error(e);
+  }
+ });
+
+  test('sanity check 12', () => {
+      expect(new DebugMachine(parse_cbpv(`
+(letrec (
+  (foldr (λ (c e xs)
+    (let xs (? xs)
+    ( (? xs) c e ) )))
+
+  (nil (λ () (! (λ (c e) e))))
+
+  (cons (λ (x xs) (! (λ (c e)
+    ( (? c)
+        x
+        (! ( (? foldr)
+               c
+               e
+               xs )))))))
+
+)
+(let list-1
+  (! ((? nil)))
+( (? foldr)
+    (! (λ (a b)
+      (let a (? a)
+      (let b (? b)
+      (prim-add a b)))))
+    7
+    list-1 ))
+)
+      `)).
+        run()).
+        toStrictEqual({
+          tag: 'NumV',
+          v: 7
+        });
+  });
+
+  test('sanity check 13', () => {
+      expect(new DebugMachine(parse_cbpv(`
+(letrec (
+  (foldr (λ (c e xs)
+    (let xs (? xs)
+    ( (? xs) c e ) )))
+
+  (nil (λ () (! (λ (c e) e))))
+
+  (cons (λ (x xs) (! (λ (c e)
+    ( (? c)
+        x
+        (! ( (? foldr)
+               c
+               e
+               xs )))))))
+
+)
+(let list-1
+  (! ((? cons) 10
+  (! ((? nil)))))
+( (? foldr)
+    (! (λ (a b)
+      (let a (? a)
+      (let b (? b)
+      (prim-add a b)))))
+    7
+    list-1 ))
+)
+      `)).
+        run()).
+        toStrictEqual({
+          tag: 'NumV',
+          v: 17
+        });
   });
 });
