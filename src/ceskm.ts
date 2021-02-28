@@ -108,30 +108,33 @@ export class CESKM {
    */
   private positive(expr: Cbpv, env: Env, store: Store): Value {
     let finished: boolean = false;
-    switch (expr.tag) {
-      case 'NumA': return numval(expr.v);
-      case 'BoolA': return boolval(expr.v);
-      case 'SymA': {
-        if ("_" === expr.v)
-          { return continuation(haltk()); }
-        else {
-          let addr_or_val: string | Cbpv =
-            env_lookup(expr.v, env);
-          return ("string" === typeof addr_or_val)
-            ? store[<string>addr_or_val]
-            : closure(<Cbpv>addr_or_val, env); }
-        break; }
-      case 'SuspendA': {
-        let { exp: cexp } = expr;
-        if (!cbpv_is_positive(cexp)) {
-          return closure(cexp, env); }
-        else {
-          return this.positive(cexp, env, store); }}
-      case 'PrimA': {
-        return this.primop(
-          expr.op,
-          expr.erands.map(
-            (erand: Cbpv) => this.positive(erand, env, store))); }}
+    while (!finished) {
+      switch (expr.tag) {
+        case 'NumA': return numval(expr.v);
+        case 'BoolA': return boolval(expr.v);
+        case 'SymA': {
+          if ("_" === expr.v)
+            { return continuation(haltk()); }
+          else {
+            let addr_or_val: string | Cbpv =
+              env_lookup(expr.v, env);
+            return ("string" === typeof addr_or_val)
+              ? store[<string>addr_or_val]
+              : closure(<Cbpv>addr_or_val, env); }
+          break; }
+        case 'SuspendA': {
+          let { exp: cexp } = expr;
+          if (!cbpv_is_positive(cexp)) {
+            return closure(cexp, env); }
+          else {
+            expr = cexp;
+            break;}}
+        case 'PrimA': {
+          return this.primop(
+            expr.op,
+            expr.erands.map(
+              (erand: Cbpv) => this.positive(erand, env, store))); }
+        default: finished = true; }}
     throw new Error('Invalid positive term.'); }
 
   /**
@@ -218,7 +221,7 @@ export class CESKM {
             environment,
             store,
             kontinuation,
-            meta, }; }
+            meta }; }
         case 'ResumeA': {
           let val = this.positive(control.v, environment, store);
           if ("ClosureV" === val.tag) {
@@ -310,8 +313,8 @@ export class CESKM {
             kontinuation: kontinuation.kont,
             meta
           };  }
-        default: throw new Error ('Invalid continuation'); } }
-    throw new Error('tbh idk'); }
+        default: finished = true; } }
+    throw new Error('Invalid continuation.'); }
 
   /**
    * @method primop
