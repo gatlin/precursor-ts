@@ -72,17 +72,20 @@ export class CESKM {
     protected readonly control: Cbpv
   ) {}
 
+  protected make_initial_state(): State {
+    return {
+      control: this.control,
+      environment: [],
+      store: {},
+      kontinuation: haltk(),
+      meta: [] }; }
+
   /**
    * @method run
    * @returns { Value } The result value of the control expression.
    */
   public run(): Value {
-    let st: State = {
-      control: this.control,
-      environment: [],
-      store: {},
-      kontinuation: haltk(),
-      meta: [] };
+    let st: State = this.make_initial_state();
     while (!this.result) {
       let res = this.step(clone(st));
       if (!this.result) {
@@ -148,9 +151,8 @@ export class CESKM {
    * step so long as they wrap one of the complete steps. That's what the loop
    * is for; this function is still guaranteed™ to terminate for well-formed
    * inputs.
-   * Private so that sub-classes can't call it from primop.
    */
-  private step(state: State): Value | State {
+  protected step(state: State): Value | State {
     let finished: boolean = false;
     let {
       control,
@@ -171,12 +173,7 @@ export class CESKM {
         case 'LetA': {
           let { v, exp, body } = control;
           control = exp;
-          kontinuation = letk(
-            v,
-            body,
-            environment,
-            kontinuation
-          );
+          kontinuation = letk(v, body, environment, kontinuation );
           break; }
         case 'LetrecA': {
           let frame: Frame = {};
@@ -202,7 +199,7 @@ export class CESKM {
             meta }; }
         case 'ResetA': {
           let cc: Kont = kontinuation;
-          control = control.exp!;
+          control = control.exp;
           kontinuation = haltk();
           meta.unshift(cc);
           return {
