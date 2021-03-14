@@ -321,4 +321,23 @@ describe('index', () => {
           v: 17
         });
   });
+
+  test('comment test', () => {
+    expect(new DebugMachine(parse_cbpv(`
+(letrec ( ; comment 1
+  (fact-tailrec (λ (n total)
+;comment 2
+    (if (prim-eq n 2)
+      total ; comment 3
+      ((? fact-tailrec) (prim-sub n 1) (prim-mul n total)))))
+)
+((? fact-tailrec) 10 1) ;; comment 4
+)
+    `)).
+      run()).
+      toStrictEqual({
+        tag: 'NumV',
+        v: 1814400
+      });
+  });
 });

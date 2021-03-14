@@ -204,9 +204,11 @@ export const build_cbpv = (ast: any): Cbpv => {
  * @function parse_cbpv
  * @param {string} source the source code to parse
  * @returns {Cbpv} a CBPV syntax object ready to be executed.
+ * @remarks The source code is stripped of comments before parsing.
  */
 export const parse_cbpv = (source: string): Cbpv => {
-  const parser = new Parser(source);
+  const uncommented = source.replace(/;.*?\n/g,"");
+  const parser = new Parser(uncommented);
   const cbpv = build_cbpv(parser.parse());
   return cbpv;
 };

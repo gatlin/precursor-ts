@@ -28,6 +28,7 @@ import { strict as assert } from "assert";
 
 let thirteen_factorial = new CESKM(parse_cbpv(`
 (letrec (
+  ; compute the number 13 in a ... roundabout way.
   (thirteen (λ ()
     (let twelve (reset
       (let three-then-six (shift times-2
@@ -35,6 +36,7 @@ let thirteen_factorial = new CESKM(parse_cbpv(`
         (times-2 six)))
       (prim-mul 2 three-then-six)))
     (prim-add twelve 1))))
+  ; what kind of language demo would this be without factorial?
   (factorial (\ (n) (letrec (
     (help (λ (n total)
       (let n (? n)
@@ -53,16 +55,7 @@ assert(thirteen_factorial===6227020800);
 To help clarify what is going on, here we are evaluating a (silly) Precursor
 program in a VM *inside* a JavaScript program.
 
-To help parse what you're looking at, the silly Precursor program consists of
-two named parts:
-
-- `thirteen`, which computes the number `13` in an extremely cirumspect and
-  ridiculous way; and
-- `factorial`, which computes the factorial of its argument.
-
-It then applies `factorial` to the result of `thirteen`.
-
-# real fast - why is this implemented in TS / JS?
+# real fast - why is this implemented in TS / JS, of all things?
 
 1. I want to experiment more with call-by-push-value; the browser provides a
    number of fun capabilities, which makes for a fun setting to explore the
@@ -73,12 +66,6 @@ It then applies `factorial` to the result of `thirteen`.
    just accept the reality we live in and do it *right* this time, by working
    with a language foundation that doesn't prescribe any particular evaluation
    semantics.
-
-3. CBPV has a natural interpretation in a linear type system, making it
-   (potentially, theoretically) exciting for all the reasons Rust is exciting;
-
-   3.1 Also quantum computing is a linearly typed (symmetric monoidal closed
-   category) affair so I mean hey I'm just asking questions.
 
 # what's inside
 
@@ -117,6 +104,10 @@ By default the following primops are supported by the language.
 The `prim-` prefix is purely a convention: the goal was to provide a useful,
 non-controversial, simple set of operators which are deliberately namespaced in
 a clunky manner client code is not likely to want for itself.
+
+The default `Parser` (in `parser.ts`), by convention, will parse any
+application of a symbol beginning with `prim-` (eg, `(prim-add 1 2)`) as a
+primitive operator application.
 
 The built-in primops are as follows:
 
@@ -157,19 +148,7 @@ class DemoMachine extends CESKM {
 
 [demoextendexample]: https://github.com/gatlin/precursor-site/blob/main/src/main.js 
 
-## The grammar
-
-The virtual machine is defined in terms of, but separately from, the
-*call-by-push-value* `Cbpv` grammar type, in the `grammar.ts` module.
-
-The idea is that this VM is useful as a transpiler target for applications
-which want to include some scripting ability; if you're cool with the default
-language, then this package contains everything you need.
-
-Otherwise, have a look at `src/grammar.ts` to see the `Cbpv` expression data
-type that the VM executions as well as its smart constructors.
-
-# What language is this?
+# What's with this language?
 
 It's one I'm working on.
 I call this version *precursor* because
@@ -178,9 +157,40 @@ I call this version *precursor* because
 - you can supply your own surface language that transpiles to this, that's fine
   too and expected in the design.
 
+Here is the grammar directly from `grammar.ts`:
+
+```typescript
+type Cbpv
+  = { tag: 'NumA' ; v: number }
+  | { tag: 'BoolA' ; v: boolean }
+  | { tag: 'SymA' ; v: string }
+  | { tag: 'PrimA' ; op: string; erands: Cbpv[] }
+  | { tag: 'SuspendA'; exp: Cbpv }
+  | { tag: 'ResumeA'; v: Cbpv }
+  | { tag: 'LamA'; args: string[]; body: Cbpv }
+  | { tag: 'AppA'; op: Cbpv; erands: Cbpv[] }
+  | { tag: 'LetA'; v: string; exp: Cbpv; body: Cbpv }
+  | { tag: 'LetrecA'; bindings: [string,Cbpv][]; body: Cbpv }
+  | { tag: 'ResetA'; exp: Cbpv }
+  | { tag: 'ShiftA'; karg: string; body: Cbpv }
+  | { tag: 'IfA'; c: Cbpv; t: Cbpv; e : Cbpv }
+  ;
+```
+
 **Call-by-push-value** is, intuitively, a foundation for programming languages
 where *evaluation of terms* and *creation of closures* are primitive operations
 up to the programmer: *suspend* (written `!`) and *resume* (written `?`).
+
+There aren't that many CBPV languages out there that I'm aware of, and fewer
+with *delimited continuation* control operators: `shift` and `reset`.
+
+Instead of attempting to explain what Call-By-Push-Value *and* delimited
+continuation are all about, I refer you to [this extraordinary paper on the
+subject][cbpvdelimccpaper]
+
+[cbpvdelimccpaper]: https://dl.acm.org/doi/10.1145/3110257
+
+But if we can be a little prosaic ...
 
 CBPV has several theoretical advantages in helping programmers safely define,
 compose, and reason about side effects an intuitive way, because of
@@ -191,15 +201,15 @@ operators (`load` and `save`, because "get" and "put" are *so* passé):
 
 ```
 (letrec (
+  ; "effect operators" following cookie-cutter pattern
   (load (λ () (shift k
     (! (λ (l _) ((? l) k))))))
-
   (save (λ (new-state) (shift k
     (! (λ (_ s) ((? s) new-state k))))))
-
+  ; conclude side-effects and return a result
   (return (λ (x) (shift k
     (! (λ (_ _) (? x))))))
-
+  ; handles actual implementation of effect
   (run-state (λ (state comp)
     (let handle (reset (? comp))
     ((? handle)
@@ -209,7 +219,7 @@ operators (`load` and `save`, because "get" and "put" are *so* passé):
        (! (λ (new-state k)
          (let result (! (k _))
          ((? run-state) new-state result))))))))
-
+  ; an example state-ful computation
   (increment-state (λ ()
     (let n ((? load))
     (let _ ((? save) (prim-add n 1))
@@ -223,7 +233,7 @@ operators (`load` and `save`, because "get" and "put" are *so* passé):
 This would evaluate to the following `Value`:
 
 ```JSON
-{ "tag": "NumV", v: 256 }
+{ "tag": "NumV", "v": 256 }
 ```
 
 Thanks to CBPV, algebraic effect handling has a really simple implementation.
