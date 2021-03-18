@@ -55,18 +55,6 @@ assert(thirteen_factorial===6227020800);
 To help clarify what is going on, here we are evaluating a (silly) Precursor
 program in a VM *inside* a JavaScript program.
 
-# real fast - why is this implemented in TS / JS, of all things?
-
-1. I want to experiment more with call-by-push-value; the browser provides a
-   number of fun capabilities, which makes for a fun setting to explore the
-   separation of effect handlers from their operators, etc;
-
-2. JS is everywhere, and since time is a flat circle it's only a matter of time
-   until we want to embed constrained, instrumentable interpreters in JS. Let's
-   just accept the reality we live in and do it *right* this time, by working
-   with a language foundation that doesn't prescribe any particular evaluation
-   semantics.
-
 # what's inside
 
 Precursor consists of (and exports) several parts:
@@ -124,6 +112,16 @@ prim-gte : number x number -> boolean
 prim-and : boolean x boolean -> boolean
 prim-or  : boolean x boolean -> boolean
 prim-not : boolean -> boolean
+prim-string-length : string -> number
+prim-string-concat : string x string -> string
+prim-object-new : even number pairs, alternating string x value -> object
+prim-object-get : string x object -> value
+prim-object-set : string x value x object -> object
+prim-object-exists : string x object -> boolean
+prim-array-new : value * -> array
+prim-array-get : number x array -> value
+prim-array-set : number x value x array -> array
+prim-array-length : array -> number
 ```
 
 The live demo site [itself extends `CESKM`][demoextendexample] provides an
@@ -163,6 +161,7 @@ Here is the grammar directly from `grammar.ts`:
 type Cbpv
   = { tag: 'NumA' ; v: number }
   | { tag: 'BoolA' ; v: boolean }
+  | { tag: 'StrA' ; v: string }
   | { tag: 'SymA' ; v: string }
   | { tag: 'PrimA' ; op: string; erands: Cbpv[] }
   | { tag: 'SuspendA'; exp: Cbpv }
@@ -176,6 +175,28 @@ type Cbpv
   | { tag: 'IfA'; c: Cbpv; t: Cbpv; e : Cbpv }
   ;
 ```
+
+## A note on the basic types
+
+The grammar distinguishes between numbers, booleans, string literals, and
+*symbols* - identifiers meant to be looked up in the lexical environment.
+At this stage, I am not ready to grapple with all the complexities that come
+with efficient text and string handling; for now a string is any valid string
+in the JSON spec (eg, double quotes only like `"foo"` not `'foo'`.).
+
+You'll notice that there are default primops for manipulating *objects* and
+*arrays* (as understood in the JSON spec).
+In Precursor, objects and arrays are **notations** for representing compound
+values: one indexed by strings, and one by numbers.
+
+The language of `Value`s - that is, potential results of evaluating a `Cbpv`
+expression - is meant to be able to accommodate legal JSON values.
+Precursor does **not** want to commit this semantics - that of a projective
+product polymorphic in its index type - to a particular underlying
+representation or make any semantic guarantees beyond what it strictly has to.
+
+Your parser is of course free to interpreter whatever source syntax you want
+for manipulating object and array values.
 
 **Call-by-push-value** is, intuitively, a foundation for programming languages
 where *evaluation of terms* and *creation of closures* are primitive operations
@@ -202,23 +223,27 @@ operators (`load` and `save`, because "get" and "put" are *so* passé):
 ```
 (letrec (
   ; "effect operators" following cookie-cutter pattern
-  (load (λ () (shift k
-    (! (λ (l _) ((? l) k))))))
-  (save (λ (new-state) (shift k
-    (! (λ (_ s) ((? s) new-state k))))))
+  (load (λ () (shift k ;; comment test 2
+    (! (λ (f) ((? (prim-object-get "load" f)) k))))))
+
+  (save (λ (v) (shift k
+    (! (λ (f) ((? (prim-object-get "save" f)) v k))))))
+
   ; conclude side-effects and return a result
   (return (λ (x) (shift k
-    (! (λ (_ _) (? x))))))
+    (! (λ (_) (? x))))))
+
   ; handles actual implementation of effect
-  (run-state (λ (state comp)
+  (run-state (λ (st comp)
     (let handle (reset (? comp))
-    ((? handle)
-       (! (λ (k)
-         (let result (! (k state))
-         ((? run-state) state result))))
-       (! (λ (new-state k)
-         (let result (! (k _))
-         ((? run-state) new-state result))))))))
+    ((? handle) (prim-object-new
+      "load" (! (λ (continue)
+               (let res (! (continue st))
+               ((? run-state) st res))))
+      "save" (! (λ (v continue)
+               (let res (! (continue _))
+               ((? run-state) v res)))))))))
+
   ; an example state-ful computation
   (increment-state (λ ()
     (let n ((? load))
@@ -261,6 +286,19 @@ features, so I am going to have give the type checker a little thought. `:-)`
 
 One reason CBPV is interesting is *because* term evaluation has consequences in
 the types. This is **cool** and **good**.
+
+# real fast - why is this implemented in TS / JS, of all things?
+
+1. I want to experiment more with call-by-push-value; the browser provides a
+   number of fun capabilities, which makes for a fun setting to explore the
+   separation of effect handlers from their operators, etc;
+
+2. JS is everywhere, and since time is a flat circle it's only a matter of time
+   until we want to embed constrained, instrumentable interpreters in JS. Let's
+   just accept the reality we live in and do it *right* this time, by working
+   with a language foundation that doesn't prescribe any particular evaluation
+   semantics.
+
 
 # Questions / Comments / Etc
 

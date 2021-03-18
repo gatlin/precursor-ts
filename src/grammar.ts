@@ -6,6 +6,7 @@
 export type Cbpv
   = { tag: 'NumA' ; v: number }
   | { tag: 'BoolA' ; v: boolean }
+  | { tag: 'StrA' ; v: string }
   | { tag: 'SymA' ; v: string }
   | { tag: 'PrimA' ; op: string; erands: Cbpv[] }
   | { tag: 'SuspendA'; exp: Cbpv }
@@ -22,6 +23,7 @@ export type Cbpv
 // smart constructors
 export const cbpv_num = (v: number): Cbpv => ({ tag: 'NumA', v });
 export const cbpv_bool = (v: boolean): Cbpv => ({ tag: 'BoolA', v });
+export const cbpv_str = (v: string): Cbpv => ({ tag: 'StrA', v });
 export const cbpv_sym = (v: string): Cbpv => ({ tag: 'SymA', v });
 export const cbpv_prim = (op: string, erands: Cbpv[]): Cbpv => ({
   tag: 'PrimA',

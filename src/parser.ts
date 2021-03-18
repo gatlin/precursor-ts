@@ -8,6 +8,7 @@ import {
   cbpv_num,
   cbpv_bool,
   cbpv_sym,
+  cbpv_str,
   cbpv_prim,
   cbpv_app,
   cbpv_let,
@@ -42,19 +43,24 @@ export class Parser {
 
   protected parse_expression(): any {
     this.whitespace();
-    if (this.expression[this.cursor] === '(' ) {
-      return this.parse_list();
-    }
-    return this.parse_atom();
-  }
+    if (';' === this.expression[this.cursor]) {
+      this.parse_comment(); }
+    else if ('(' === this.expression[this.cursor]) {
+      return this.parse_list(); }
+    return this.parse_atom(); }
+
+  protected parse_comment(): any {
+    // this is called before parse_atom and thus before parse_string.
+    // => we may assume we are not in a string.
+    while ('\n' !== this.expression[this.cursor]) {
+      this.cursor++; } }
 
   protected parse_list(): any {
     this.ast.push([]);
     this.expect('(');
     this.parse_list_entries();
     this.expect(')');
-    return this.ast[0];
-  }
+    return this.ast[0]; }
 
   protected parse_list_entries(): void {
     let finished = false;
@@ -74,8 +80,23 @@ export class Parser {
     }
   }
 
+  protected parse_string(): string {
+    let start = this.cursor;
+    let finished = false;
+    while (!finished) {
+      if ('"' === this.expression[this.cursor]) {
+        finished = true;
+      }
+      this.cursor++;
+    }
+    let str_body = this.expression.slice(start, this.cursor-1);
+    return `"${str_body}"`; };
+
   protected parse_atom(): any {
     const terminator = /\s+|\)/;
+    if ('"' === this.expression[this.cursor]) {
+      this.cursor++;
+      return this.parse_string(); }
     let atom: any = '';
     while (this.expression[this.cursor] &&
            !terminator.test(this.expression[this.cursor])) {
@@ -193,7 +214,11 @@ export const build_cbpv = (ast: any): Cbpv => {
     switch (typeof ast) {
       case 'number': return cbpv_num(<number>ast);
       case 'boolean': return cbpv_bool(<boolean>ast);
-      case 'string': return cbpv_sym(<string>ast);
+      case 'string': {
+        if ('"' === ast.charAt(0)) {
+          return cbpv_str(<string>ast.substr(1,ast.length-2)); }
+        return cbpv_sym(<string>ast);
+      }
     }
   }
 
@@ -207,8 +232,7 @@ export const build_cbpv = (ast: any): Cbpv => {
  * @remarks The source code is stripped of comments before parsing.
  */
 export const parse_cbpv = (source: string): Cbpv => {
-  const uncommented = source.replace(/;.*?\n/g,"");
-  const parser = new Parser(uncommented);
+  const parser = new Parser(source);
   const cbpv = build_cbpv(parser.parse());
   return cbpv;
 };

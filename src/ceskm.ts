@@ -23,7 +23,10 @@ export type Value
   = { tag: 'ClosureV', exp: Cbpv, env: Env }
   | { tag: 'ContinuationV', kont: Kont }
   | { tag: 'NumV', v: number }
-  | { tag: 'BoolV', v: boolean } ;
+  | { tag: 'BoolV', v: boolean }
+  | { tag: 'StrV' , v: string }
+  | { tag: 'ObjV' , v: Record<string, Value> }
+  | { tag: 'ArrV' , v: Value[] };
 export const closure = (exp: Cbpv, env: Env): Value => ({
   tag: 'ClosureV',
   exp,
@@ -33,6 +36,9 @@ export const continuation = (kont: Kont): Value => ({
   kont });
 export const numval = (v: number): Value => ({ tag: 'NumV', v });
 export const boolval = (v: boolean): Value => ({ tag: 'BoolV', v });
+export const strval = (v: string): Value => ({ tag: 'StrV', v });
+export const objval = (v: Record<string,Value>): Value => ({ tag: 'ObjV', v });
+export const arrval = (v: Value[]): Value => ({ tag: 'ArrV', v });
 
 /* Environment and store */
 
@@ -115,6 +121,7 @@ export class CESKM {
       switch (expr.tag) {
         case 'NumA': return numval(expr.v);
         case 'BoolA': return boolval(expr.v);
+        case 'StrA': return strval(expr.v); 
         case 'SymA': {
           if ("_" === expr.v)
             { return continuation(haltk()); }
@@ -138,7 +145,7 @@ export class CESKM {
             expr.erands.map(
               (erand: Cbpv) => this.positive(erand, env, store))); }
         default: finished = true; }}
-    throw new Error('Invalid positive term.'); }
+    throw new Error(`Invalid positive term: ${JSON.stringify(expr)}`); }
 
   /**
    * @method step
@@ -240,7 +247,7 @@ export class CESKM {
                 let addr: string = this.gensym();
                 store[addr] = kontinuation.vs[i];
                 frame[control.args[i]] = addr; }
-              control = control.body!;
+              control = control.body;
               env_push_frame(frame, environment);
               kontinuation = kontinuation.kont;
               return {
@@ -287,7 +294,7 @@ export class CESKM {
             kontinuation = k; }
           break; }
         case 'ArgK': {
-          let actual_val: Value = kontinuation.vs[0]!;
+          let actual_val: Value = kontinuation.vs[0];
           let next_k: Kont = kontinuation.kont;
           meta.unshift(next_k);
           if (val.tag !== 'ContinuationV') {
@@ -362,7 +369,103 @@ export class CESKM {
           { return boolval(args[0].v || args[1].v); }}
       case 'prim-not': {
         if ('BoolV' === args[0].tag)
-          { return boolval(!args[0].v); }} }
+          { return boolval(!args[0].v); }}
+      case 'prim-string-length': {
+        let str: Value = args[0];
+        if ("StrV" !== str.tag)
+          { throw new Error(`prim-string-length expects string argument, given ${JSON.stringify(args[0])}.`); }
+        return numval(str.v.length); }
+      case 'prim-string-concat': {
+        let str_l: Value = args[0];
+        let str_r: Value = args[1];
+        if ("StrV" !== str_l.tag || "StrV" !== str_r.tag)
+          { throw new Error(`prim-string-concat expects 2 string arguments.`); }
+        return strval(str_l.v.concat(str_r.v)); }
+      case 'prim-object-new': {
+        if (0 !== args.length % 2 && 0 !== args.length) {
+          throw new Error(
+            `Object requires matching pairs of strings and values`); }
+        const v: Record<string,Value> = {};
+        for (let i = 0; i < args.length; i += 2) {
+          let key: Value = args[i];
+          let val: Value = args[i+1];
+          if ("StrV" !== key.tag) {
+            throw new Error(`Object key must be string, given: ${key}`); }
+          v[key.v] = val; }
+        return objval(v); }
+      case 'prim-object-get': {
+        let key: Value = args[0];
+        let obj: Value = args[1];
+        if ("ObjV" !== obj.tag)
+          { throw new Error(`Cannot index non-object: ${obj}`); }
+        if ("StrV" !== key.tag)
+          { throw new Error(`Object key must be string, given: ${key}`); }
+        let key_str: string = key.v;
+        if (!(key_str in obj.v))
+          { throw new Error(`No key ${key_str} in object.`); }
+        return obj.v[key_str]; }
+      case 'prim-object-set': {
+        let key: Value = args[0];
+        let val: Value = args[1];
+        let obj: Value = args[2];
+        if ("ObjV" !== obj.tag) {
+          throw new Error(`Cannot index non-object: ${obj}`); }
+        if ("StrV" !== key.tag) {
+          throw new Error(`Object key must be string, given: ${key}`); }
+        obj.v[key.v] = val;
+        return obj; }
+      case 'prim-object-exists': {
+        let key: Value = args[0];
+        let obj: Value = args[1];
+        if ("ObjV" !== obj.tag) {
+          throw new Error(`Cannot index non-object: ${obj}`); }
+        if ("StrV" !== key.tag) {
+          throw new Error(`Object key must be string, given: ${key}`); }
+        let key_str: string = key.v;
+        return boolval(key_str in obj.v); }
+      case 'prim-object-del': {
+        let key: Value = args[0];
+        let obj: Value = args[1];
+        if ("ObjV" !== obj.tag) {
+          throw new Error(`Cannot index non-object: ${obj}`); }
+        if ("StrV" !== key.tag) {
+          throw new Error(`Object key must be string, given: ${key}`); }
+        delete obj.v[<string>key.v];
+        return obj; }
+
+      case 'prim-array-new': { return arrval(clone(args)); }
+      case 'prim-array-get': {
+        let idx: Value = args[0];
+        let arr: Value = args[1];
+        if ("ArrV" !== arr.tag)
+          { throw new Error(`You cannot array-index a non-array.`); }
+        if ("NumV" !== idx.tag)
+          { throw new Error(`Array index must be a number, given: ${idx}`); }
+        let idx_num: number = idx.v;
+        let arr_v: Value[] = arr.v;
+        if (idx_num < 0) 
+          { throw new Error(`Array index must be >= 0.`); }
+        if (idx_num >= arr_v.length) 
+          { throw new Error(`Array index out of bounds error`); }
+        return arr_v[idx_num]; }
+      case 'prim-array-set': {
+        let key: Value = args[0];
+        let val: Value = args[1];
+        let arr: Value = args[2];
+        if ("ArrV" !== arr.tag) {
+          throw new Error(`Cannot index non-array: ${arr}`); }
+        if ("NumV" !== key.tag) {
+          throw new Error(`Array index must be number, given: ${key}`); }
+        arr.v[key.v] = val;
+        return arr; }
+      case 'prim-array-length': {
+        if (1 !== args.length) {
+          throw new Error(
+            `prim-array-length has 1 argument (given ${args.length})`); }
+        let arr: Value = args[0];
+        if ("ArrV" !== arr.tag)
+          { throw new Error(`prim-array-length expects array argument.`); }
+        return numval(arr.v.length); } }
     let s = '';
     for (let arg of args) { s += ` ${arg.tag}`; }
     throw new Error(`bad prim op or arguments: ${op_sym} - ${s}`); }}
