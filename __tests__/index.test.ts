@@ -360,6 +360,23 @@ describe('index', () => {
       });
   });
 
+  test('object delete', () => {
+    expect(new DebugMachine(`
+(let o1 (prim-object-new "key1" #f "key2" #t)
+(prim-object-del "key1" o1))
+`).
+           run()).
+      toStrictEqual({
+        tag: 'ObjV',
+        v: {
+          'key2': {
+            tag: 'BoolV',
+            v: true
+          }
+        }
+      });
+  });
+
   test('string, object, array, and comment test', () => {
     expect(new DebugMachine(`
 (letrec (

@@ -423,6 +423,16 @@ export class CESKM {
           throw new Error(`Object key must be string, given: ${key}`); }
         let key_str: string = key.v;
         return boolval(key_str in obj.v); }
+      case 'prim-object-del': {
+        let key: Value = args[0];
+        let obj: Value = args[1];
+        if ("ObjV" !== obj.tag) {
+          throw new Error(`Cannot index non-object: ${obj}`); }
+        if ("StrV" !== key.tag) {
+          throw new Error(`Object key must be string, given: ${key}`); }
+        delete obj.v[<string>key.v];
+        return obj; }
+
       case 'prim-array-new': { return arrval(clone(args)); }
       case 'prim-array-get': {
         let idx: Value = args[0];
@@ -438,6 +448,16 @@ export class CESKM {
         if (idx_num >= arr_v.length) 
           { throw new Error(`Array index out of bounds error`); }
         return arr_v[idx_num]; }
+      case 'prim-array-set': {
+        let key: Value = args[0];
+        let val: Value = args[1];
+        let arr: Value = args[2];
+        if ("ArrV" !== arr.tag) {
+          throw new Error(`Cannot index non-array: ${arr}`); }
+        if ("NumV" !== key.tag) {
+          throw new Error(`Array index must be number, given: ${key}`); }
+        arr.v[key.v] = val;
+        return arr; }
       case 'prim-array-length': {
         if (1 !== args.length) {
           throw new Error(
