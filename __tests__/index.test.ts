@@ -1,6 +1,14 @@
-import { CESKM, Value, Kont, Parser, build_cbpv, parse_cbpv } from "../src/index";
+import {
+  CESKM,
+  Value,
+  Kont,
+  Parser,
+  build_cbpv,
+  parse_cbpv
+} from "../src/index";
 
 class DebugMachine extends CESKM {
+  constructor (program: string) { super(parse_cbpv(program)); }
   protected primop(op_sym: string, args: Value[]): Value {
     switch (op_sym) {
       case 'prim-mod': {
@@ -15,11 +23,11 @@ class DebugMachine extends CESKM {
 
 describe('index', () => {
   test('sanity check 1', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
   (sqr-int (λ (n) (prim-mul n n)))
 )
-((? sqr-int) 69))`)).
+((? sqr-int) 69))`).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -27,7 +35,7 @@ describe('index', () => {
     });
   });
   test('sanity check 2', () => {
-    expect(new DebugMachine(parse_cbpv("( (\\ (x) (prim-mul x 2)) 210)")).
+    expect(new DebugMachine("( (\\ (x) (prim-mul x 2)) 210)").
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -36,7 +44,7 @@ describe('index', () => {
   });
 
   test('sanity check 3', () => {
-    expect(new DebugMachine(parse_cbpv("(let n (prim-add 1 2) (prim-mul n 2))")).
+    expect(new DebugMachine("(let n (prim-add 1 2) (prim-mul n 2))").
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -45,7 +53,7 @@ describe('index', () => {
   });
 
   test('sanity check 4', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
   (fact-tailrec (λ (n total)
     (if (prim-eq n 2)
@@ -54,7 +62,7 @@ describe('index', () => {
 )
 ((? fact-tailrec) 10 1)
 )
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -63,12 +71,12 @@ describe('index', () => {
   });
 
   test('sanity check 5', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
   (times (λ (a b) (prim-mul a b)))
 )
 ((? times) 2 4))
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -77,11 +85,11 @@ describe('index', () => {
   });
 
   test('sanity check 6', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (let f (reset (shift k k))
 (let n (f (prim-add 10 55))
 (prim-mul 3 n)))
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -89,7 +97,7 @@ describe('index', () => {
       });
   });
   test('sanity check 7', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
   (seventeen (λ ()
     (let sixteen (reset
@@ -108,7 +116,7 @@ describe('index', () => {
 )
 ((? fact) (! ((? seventeen))))
 )
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -116,7 +124,7 @@ describe('index', () => {
       });
   });
   test('sanity check 8', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
   (make-reducer (λ (initial-value) (letrec (
     (loop (λ (total first-run) (reset
@@ -135,7 +143,7 @@ describe('index', () => {
 (let the-reducer (the-reducer 420)
 (the-reducer 0))))
 )
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -143,7 +151,7 @@ describe('index', () => {
       });
   });
   test('sanity check 9', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
   (next (λ (gen)
@@ -163,7 +171,7 @@ describe('index', () => {
 (let n3 ((? peek) gen)
 (prim-add (prim-add n1 n2) n3)))))))
 )
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -171,7 +179,7 @@ describe('index', () => {
       });
   });
   test('sanity check 10', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec (
 
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
@@ -210,7 +218,7 @@ describe('index', () => {
 (let n3 ((? peek) gen)
 (prim-add (prim-add n1 n2) (prim-add n3 n))))))))))))
 )
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -218,7 +226,7 @@ describe('index', () => {
       });
   });
   test('sanity check 11', () => {
-    let machine = new DebugMachine(parse_cbpv(`
+    let machine = new DebugMachine(`
 (letrec (
   (pair (\\ (a b)
     (! (\\ (p) ((? p) a b)))))
@@ -235,7 +243,7 @@ describe('index', () => {
 (let fn ((? pair-snd) p1)
 ((? fn) num) )))
 )
-`));
+`);
   try {
     let res = machine.run();
     expect(res).
@@ -250,7 +258,7 @@ describe('index', () => {
  });
 
   test('sanity check 12', () => {
-      expect(new DebugMachine(parse_cbpv(`
+      expect(new DebugMachine(`
 (letrec (
   (foldr (λ (c e xs)
     (let xs (? xs)
@@ -277,7 +285,7 @@ describe('index', () => {
     7
     list-1 ))
 )
-      `)).
+      `).
         run()).
         toStrictEqual({
           tag: 'NumV',
@@ -286,7 +294,7 @@ describe('index', () => {
   });
 
   test('sanity check 13', () => {
-      expect(new DebugMachine(parse_cbpv(`
+      expect(new DebugMachine(`
 (letrec (
   (foldr (λ (c e xs)
     (let xs (? xs)
@@ -314,7 +322,7 @@ describe('index', () => {
     7
     list-1 ))
 )
-      `)).
+      `).
         run()).
         toStrictEqual({
           tag: 'NumV',
@@ -323,7 +331,7 @@ describe('index', () => {
   });
 
   test('comment test', () => {
-    expect(new DebugMachine(parse_cbpv(`
+    expect(new DebugMachine(`
 (letrec ( ; comment 1
   (fact-tailrec (λ (n total)
 ;comment 2
@@ -333,11 +341,61 @@ describe('index', () => {
 )
 ((? fact-tailrec) 10 1) ;; comment 4
 )
-    `)).
+    `).
       run()).
       toStrictEqual({
         tag: 'NumV',
         v: 1814400
       });
   });
+
+  test('string functions: length', () => {
+    expect(new DebugMachine(`
+    (prim-string-length "bottom text")
+    `).
+      run()).
+      toStrictEqual({
+        tag: 'NumV',
+        v: 11
+      });
+  });
+
+  test('string, object, array, and comment test', () => {
+    expect(new DebugMachine(`
+(letrec (
+  ; comment test 1
+  (load (λ () (shift k ;; comment test 2
+    (! (λ (f) ((? (prim-object-get "load" f)) k))))))
+
+  (save (λ (v) (shift k
+    (! (λ (f) ((? (prim-object-get "save" f)) v k))))))
+
+  (return (λ (x) (shift k
+    (! (λ (_) (? x))))))
+
+  (run-state (λ (st comp)
+    (let handle (reset (? comp))
+    ((? handle) (prim-object-new
+      "load" (! (λ (continue)
+               (let res (! (continue st))
+               ((? run-state) st res))))
+      "save" (! (λ (v continue)
+               (let res (! (continue _))
+               ((? run-state) v res)))))))))
+
+  (increment-state (λ ()
+    (let n ((? load))
+    (let _ ((? save) (prim-add n 1))
+    (let n-plus-1 ((? load))
+    ((? return) n-plus-1))))))
+)
+((? run-state) 419 (! ((? increment-state))))
+)`).
+      run()).
+      toStrictEqual({
+        tag: 'NumV',
+        v: 420
+    });
+  });
 });
+
