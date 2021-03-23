@@ -11,7 +11,7 @@ class DebugMachine extends CESKM {
   constructor (program: string) { super(parse_cbpv(program)); }
   protected primop(op_sym: string, args: Value[]): Value {
     switch (op_sym) {
-      case 'prim-mod': {
+      case 'prim:mod': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag) {
           return { tag: 'NumV', v: args[0].v % args[1].v };
         }
@@ -25,7 +25,7 @@ describe('index', () => {
   test('sanity check 1', () => {
     expect(new DebugMachine(`
 (letrec (
-  (sqr-int (λ (n) (prim-mul n n)))
+  (sqr-int (λ (n) (prim:mul n n)))
 )
 ((? sqr-int) 69))`).
       run()).
@@ -35,7 +35,7 @@ describe('index', () => {
     });
   });
   test('sanity check 2', () => {
-    expect(new DebugMachine("( (\\ (x) (prim-mul x 2)) 210)").
+    expect(new DebugMachine("( (\\ (x) (prim:mul x 2)) 210)").
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -44,7 +44,7 @@ describe('index', () => {
   });
 
   test('sanity check 3', () => {
-    expect(new DebugMachine("(let n (prim-add 1 2) (prim-mul n 2))").
+    expect(new DebugMachine("(let n (prim:add 1 2) (prim:mul n 2))").
       run()).
       toStrictEqual({
         tag: 'NumV',
@@ -56,9 +56,9 @@ describe('index', () => {
     expect(new DebugMachine(`
 (letrec (
   (fact-tailrec (λ (n total)
-    (if (prim-eq n 2)
+    (if (prim:eq n 2)
       total
-      ((? fact-tailrec) (prim-sub n 1) (prim-mul n total)))))
+      ((? fact-tailrec) (prim:sub n 1) (prim:mul n total)))))
 )
 ((? fact-tailrec) 10 1)
 )
@@ -73,7 +73,7 @@ describe('index', () => {
   test('sanity check 5', () => {
     expect(new DebugMachine(`
 (letrec (
-  (times (λ (a b) (prim-mul a b)))
+  (times (λ (a b) (prim:mul a b)))
 )
 ((? times) 2 4))
     `).
@@ -87,8 +87,8 @@ describe('index', () => {
   test('sanity check 6', () => {
     expect(new DebugMachine(`
 (let f (reset (shift k k))
-(let n (f (prim-add 10 55))
-(prim-mul 3 n)))
+(let n (f (prim:add 10 55))
+(prim:mul 3 n)))
     `).
       run()).
       toStrictEqual({
@@ -104,14 +104,14 @@ describe('index', () => {
       (let four-then-eight (shift times-2
         (let eight (times-2 4)
         (times-2 eight)))
-      (prim-mul 2 four-then-eight)))
-    (prim-add sixteen 1))))
+      (prim:mul 2 four-then-eight)))
+    (prim:add sixteen 1))))
   (fact (λ (n) (letrec (
     (help (λ (n total)
       (let n (? n)
-      (if (prim-lt n 2)
+      (if (prim:lt n 2)
         total
-        ((? help) (prim-sub n 1) (prim-mul n total)))))))
+        ((? help) (prim:sub n 1) (prim:mul n total)))))))
     ((? help) n 1))))
 )
 ((? fact) (! ((? seventeen))))
@@ -129,11 +129,11 @@ describe('index', () => {
   (make-reducer (λ (initial-value) (letrec (
     (loop (λ (total first-run) (reset
       (let n (shift k k)
-      (if (prim-and
-            (prim-eq n 0)
-            (prim-not first-run))
+      (if (prim:and
+            (prim:eq n 0)
+            (prim:not first-run))
         total
-        ((? loop) (prim-add n total) #f  ))))))
+        ((? loop) (prim:add n total) #f  ))))))
     )
     ((? loop) initial-value #t)
   )))
@@ -169,7 +169,7 @@ describe('index', () => {
 (let n2 ((? peek) gen)
 (let gen ((? next) gen)
 (let n3 ((? peek) gen)
-(prim-add (prim-add n1 n2) n3)))))))
+(prim:add (prim:add n1 n2) n3)))))))
 )
     `).
       run()).
@@ -193,11 +193,11 @@ describe('index', () => {
     (loop (λ (total first-run) (reset
       (let n (shift k k)
       (let n (? n)
-      (if (prim-and
-            (prim-eq n 0)
-            (prim-not first-run))
+      (if (prim:and
+            (prim:eq n 0)
+            (prim:not first-run))
         total
-        ((? loop) (prim-add n total) #f  )))))))
+        ((? loop) (prim:add n total) #f  )))))))
     )
     ((? loop) initial-value #t)
   )))
@@ -216,7 +216,7 @@ describe('index', () => {
 (let n2 ((? peek) gen)
 (let gen ((? next) gen)
 (let n3 ((? peek) gen)
-(prim-add (prim-add n1 n2) (prim-add n3 n))))))))))))
+(prim:add (prim:add n1 n2) (prim:add n3 n))))))))))))
 )
     `).
       run()).
@@ -236,7 +236,7 @@ describe('index', () => {
     ((? p) (! (\\ (a b) b)))))
   (is-even (\\ (n)
     (let n (? n)
-    (prim-eq 0 (prim-mod n 2)))))
+    (prim:eq 0 (prim:mod n 2)))))
 )
 (let p1 ((? pair) 3 is-even)
 (let num ((? pair-fst) p1)
@@ -281,7 +281,7 @@ describe('index', () => {
     (! (λ (a b)
       (let a (? a)
       (let b (? b)
-      (prim-add a b)))))
+      (prim:add a b)))))
     7
     list-1 ))
 )
@@ -318,7 +318,7 @@ describe('index', () => {
     (! (λ (a b)
       (let a (? a)
       (let b (? b)
-      (prim-add a b)))))
+      (prim:add a b)))))
     7
     list-1 ))
 )
@@ -335,9 +335,9 @@ describe('index', () => {
 (letrec ( ; comment 1
   (fact-tailrec (λ (n total)
 ;comment 2
-    (if (prim-eq n 2)
+    (if (prim:eq n 2)
       total ; comment 3
-      ((? fact-tailrec) (prim-sub n 1) (prim-mul n total)))))
+      ((? fact-tailrec) (prim:sub n 1) (prim:mul n total)))))
 )
 ((? fact-tailrec) 10 1) ;; comment 4
 )
@@ -351,7 +351,7 @@ describe('index', () => {
 
   test('string functions: length', () => {
     expect(new DebugMachine(`
-    (prim-string-length "bottom text")
+    (prim:string-length "bottom text")
     `).
       run()).
       toStrictEqual({
@@ -360,14 +360,14 @@ describe('index', () => {
       });
   });
 
-  test('object delete', () => {
+  test('record delete', () => {
     expect(new DebugMachine(`
-(let o1 (prim-object-new "key1" #f "key2" #t)
-(prim-object-del "key1" o1))
+(let o1 (prim:record-new "key1" #f "key2" #t)
+(prim:record-del "key1" o1))
 `).
            run()).
       toStrictEqual({
-        tag: 'ObjV',
+        tag: 'RecV',
         v: {
           'key2': {
             tag: 'BoolV',
@@ -377,22 +377,22 @@ describe('index', () => {
       });
   });
 
-  test('string, object, array, and comment test', () => {
+  test('string, record, array, and comment test', () => {
     expect(new DebugMachine(`
 (letrec (
   ; comment test 1
   (load (λ () (shift k ;; comment test 2
-    (! (λ (f) ((? (prim-object-get "load" f)) k))))))
+    (! (λ (f) ((? (prim:record-get "load" f)) k))))))
 
   (save (λ (v) (shift k
-    (! (λ (f) ((? (prim-object-get "save" f)) v k))))))
+    (! (λ (f) ((? (prim:record-get "save" f)) v k))))))
 
   (return (λ (x) (shift k
     (! (λ (_) (? x))))))
 
   (run-state (λ (st comp)
     (let handle (reset (? comp))
-    ((? handle) (prim-object-new
+    ((? handle) (prim:record-new
       "load" (! (λ (continue)
                (let res (! (continue st))
                ((? run-state) st res))))
@@ -402,7 +402,7 @@ describe('index', () => {
 
   (increment-state (λ ()
     (let n ((? load))
-    (let _ ((? save) (prim-add n 1))
+    (let _ ((? save) (prim:add n 1))
     (let n-plus-1 ((? load))
     ((? return) n-plus-1))))))
 )

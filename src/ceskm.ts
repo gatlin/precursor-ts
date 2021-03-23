@@ -25,7 +25,7 @@ export type Value
   | { tag: 'NumV', v: number }
   | { tag: 'BoolV', v: boolean }
   | { tag: 'StrV' , v: string }
-  | { tag: 'ObjV' , v: Record<string, Value> }
+  | { tag: 'RecV' , v: Record<string, Value> }
   | { tag: 'ArrV' , v: Value[] };
 export const closure = (exp: Cbpv, env: Env): Value => ({
   tag: 'ClosureV',
@@ -37,7 +37,7 @@ export const continuation = (kont: Kont): Value => ({
 export const numval = (v: number): Value => ({ tag: 'NumV', v });
 export const boolval = (v: boolean): Value => ({ tag: 'BoolV', v });
 export const strval = (v: string): Value => ({ tag: 'StrV', v });
-export const objval = (v: Record<string,Value>): Value => ({ tag: 'ObjV', v });
+export const recval = (v: Record<string,Value>): Value => ({ tag: 'RecV', v });
 export const arrval = (v: Value[]): Value => ({ tag: 'ArrV', v });
 
 /* Environment and store */
@@ -332,109 +332,109 @@ export class CESKM {
    */
   protected primop(op_sym: string, args: Value[]): Value {
     switch (op_sym) {
-      case 'prim-mul': {
+      case 'prim:mul': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return numval(args[0].v * args[1].v); }}
-      case 'prim-add': {
+      case 'prim:add': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return numval(args[0].v + args[1].v); }}
-      case 'prim-sub': {
+      case 'prim:sub': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return numval(args[0].v - args[1].v); }}
-      case 'prim-div': {
+      case 'prim:div': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return numval(args[0].v / args[1].v); }}
-      case 'prim-eq': {
+      case 'prim:eq': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return boolval(args[0].v === args[1].v); }
         else if ('BoolV' === args[0].tag && 'BoolV' === args[1].tag)
           { return boolval(args[0].v === args[1].v); }}
-      case 'prim-lt': {
+      case 'prim:lt': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return boolval(args[0].v < args[1].v); }}
-      case 'prim-gt': {
+      case 'prim:gt': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return boolval(args[0].v > args[1].v); }}
-      case 'prim-lte': {
+      case 'prim:lte': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return boolval(args[0].v <= args[1].v); }}
-      case 'prim-gte': {
+      case 'prim:gte': {
         if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
           { return boolval(args[0].v >= args[1].v); }}
-      case 'prim-and': {
+      case 'prim:and': {
         if ('BoolV' === args[0].tag && 'BoolV' === args[1].tag)
           { return boolval(args[0].v && args[1].v); }}
-      case 'prim-or': {
+      case 'prim:or': {
         if ('BoolV' === args[0].tag && 'BoolV' === args[1].tag)
           { return boolval(args[0].v || args[1].v); }}
-      case 'prim-not': {
+      case 'prim:not': {
         if ('BoolV' === args[0].tag)
           { return boolval(!args[0].v); }}
-      case 'prim-string-length': {
+      case 'prim:string-length': {
         let str: Value = args[0];
         if ("StrV" !== str.tag)
-          { throw new Error(`prim-string-length expects string argument, given ${JSON.stringify(args[0])}.`); }
+          { throw new Error(`prim:string-length expects string argument, given ${JSON.stringify(args[0])}.`); }
         return numval(str.v.length); }
-      case 'prim-string-concat': {
+      case 'prim:string-concat': {
         let str_l: Value = args[0];
         let str_r: Value = args[1];
         if ("StrV" !== str_l.tag || "StrV" !== str_r.tag)
-          { throw new Error(`prim-string-concat expects 2 string arguments.`); }
+          { throw new Error(`prim:string-concat expects 2 string arguments.`); }
         return strval(str_l.v.concat(str_r.v)); }
-      case 'prim-object-new': {
+      case 'prim:record-new': {
         if (0 !== args.length % 2 && 0 !== args.length) {
           throw new Error(
-            `Object requires matching pairs of strings and values`); }
+            `Record requires matching pairs of strings and values`); }
         const v: Record<string,Value> = {};
         for (let i = 0; i < args.length; i += 2) {
           let key: Value = args[i];
           let val: Value = args[i+1];
           if ("StrV" !== key.tag) {
-            throw new Error(`Object key must be string, given: ${key}`); }
+            throw new Error(`Record key must be string, given: ${key}`); }
           v[key.v] = val; }
-        return objval(v); }
-      case 'prim-object-get': {
+        return recval(v); }
+      case 'prim:record-get': {
         let key: Value = args[0];
-        let obj: Value = args[1];
-        if ("ObjV" !== obj.tag)
-          { throw new Error(`Cannot index non-object: ${obj}`); }
+        let rec: Value = args[1];
+        if ("RecV" !== rec.tag)
+          { throw new Error(`Cannot index non-record: ${rec}`); }
         if ("StrV" !== key.tag)
-          { throw new Error(`Object key must be string, given: ${key}`); }
+          { throw new Error(`Record key must be string, given: ${key}`); }
         let key_str: string = key.v;
-        if (!(key_str in obj.v))
-          { throw new Error(`No key ${key_str} in object.`); }
-        return obj.v[key_str]; }
-      case 'prim-object-set': {
+        if (!(key_str in rec.v))
+          { throw new Error(`No key ${key_str} in record.`); }
+        return rec.v[key_str]; }
+      case 'prim:record-set': {
         let key: Value = args[0];
         let val: Value = args[1];
-        let obj: Value = args[2];
-        if ("ObjV" !== obj.tag) {
-          throw new Error(`Cannot index non-object: ${obj}`); }
+        let rec: Value = args[2];
+        if ("RecV" !== rec.tag) {
+          throw new Error(`Cannot index non-record: ${rec}`); }
         if ("StrV" !== key.tag) {
-          throw new Error(`Object key must be string, given: ${key}`); }
-        obj.v[key.v] = val;
-        return obj; }
-      case 'prim-object-exists': {
+          throw new Error(`Record key must be string, given: ${key}`); }
+        rec.v[key.v] = val;
+        return rec; }
+      case 'prim:record-exists': {
         let key: Value = args[0];
-        let obj: Value = args[1];
-        if ("ObjV" !== obj.tag) {
-          throw new Error(`Cannot index non-object: ${obj}`); }
+        let rec: Value = args[1];
+        if ("RecV" !== rec.tag) {
+          throw new Error(`Cannot index non-record: ${rec}`); }
         if ("StrV" !== key.tag) {
-          throw new Error(`Object key must be string, given: ${key}`); }
+          throw new Error(`Record key must be string, given: ${key}`); }
         let key_str: string = key.v;
-        return boolval(key_str in obj.v); }
-      case 'prim-object-del': {
+        return boolval(key_str in rec.v); }
+      case 'prim:record-del': {
         let key: Value = args[0];
-        let obj: Value = args[1];
-        if ("ObjV" !== obj.tag) {
-          throw new Error(`Cannot index non-object: ${obj}`); }
+        let rec: Value = args[1];
+        if ("RecV" !== rec.tag) {
+          throw new Error(`Cannot index non-record: ${rec}`); }
         if ("StrV" !== key.tag) {
-          throw new Error(`Object key must be string, given: ${key}`); }
-        delete obj.v[<string>key.v];
-        return obj; }
+          throw new Error(`Record key must be string, given: ${key}`); }
+        delete rec.v[<string>key.v];
+        return rec; }
 
-      case 'prim-array-new': { return arrval(clone(args)); }
-      case 'prim-array-get': {
+      case 'prim:array-new': { return arrval(clone(args)); }
+      case 'prim:array-get': {
         let idx: Value = args[0];
         let arr: Value = args[1];
         if ("ArrV" !== arr.tag)
@@ -443,12 +443,12 @@ export class CESKM {
           { throw new Error(`Array index must be a number, given: ${idx}`); }
         let idx_num: number = idx.v;
         let arr_v: Value[] = arr.v;
-        if (idx_num < 0) 
+        if (idx_num < 0)
           { throw new Error(`Array index must be >= 0.`); }
-        if (idx_num >= arr_v.length) 
+        if (idx_num >= arr_v.length)
           { throw new Error(`Array index out of bounds error`); }
         return arr_v[idx_num]; }
-      case 'prim-array-set': {
+      case 'prim:array-set': {
         let key: Value = args[0];
         let val: Value = args[1];
         let arr: Value = args[2];
@@ -458,13 +458,13 @@ export class CESKM {
           throw new Error(`Array index must be number, given: ${key}`); }
         arr.v[key.v] = val;
         return arr; }
-      case 'prim-array-length': {
+      case 'prim:array-length': {
         if (1 !== args.length) {
           throw new Error(
-            `prim-array-length has 1 argument (given ${args.length})`); }
+            `prim:array-length has 1 argument (given ${args.length})`); }
         let arr: Value = args[0];
         if ("ArrV" !== arr.tag)
-          { throw new Error(`prim-array-length expects array argument.`); }
+          { throw new Error(`prim:array-length expects array argument.`); }
         return numval(arr.v.length); } }
     let s = '';
     for (let arg of args) { s += ` ${arg.tag}`; }

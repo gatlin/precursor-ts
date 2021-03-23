@@ -195,7 +195,7 @@ export const build_cbpv = (ast: any): Cbpv => {
         );
       }
       default: {
-        if ('string' === typeof ast[0] && ast[0].startsWith('prim-')) {
+        if ('string' === typeof ast[0] && ast[0].startsWith('prim:')) {
           return cbpv_prim(
             ast[0],
             ast.slice(1).map(build_cbpv)
