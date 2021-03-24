@@ -19,172 +19,199 @@ npm i
 
 # overview
 
-Precursor is a little self-contained programming language exported as a handful
-of independent components which come ready to be used together:
+What follows is my best attempt at a summary for anyone who wanders into this
+repository and wants to know how to find out more.
+I think the best way to get a feel for its usage is to take a look at the unit
+tests in the `__tests__` directory.
 
-- a *call-by-push-value* interpreter, implemented in pure ~~JavaScript~~
-  TypeScript as a *CESKM* machine (in `ceskm.ts`);
+---
 
-- a simple data type representing the input language for the *CESKM* machine,
-  `Cbpv` (exported along with smart constructors from `grammar.ts`); and
+Precursor is a small programming language which you may grow and build upon (a
+"precursor," if you like).
 
-- an extremely plagiarized, extremely utilitarian parser for an
-  **s-expression** (read: "lispy") surface syntax which produces `Cbpv` values,
-  ready for evaluation by the *CESKM* machine.
+The default distribution consists of 3 components which work together "out of
+the box".
 
-Here is an example usage, followed by a more granular breakdown.
+## *CESKM* Evaluator
 
-```javascript
-import { CESKM, parse_cbpv, numval } from "precursor-ts";
+`ceskm.ts` defines a CESKM [machine][cekarticle] to evaluate Precursor.
+It is called a *CESKM* machine because it consists of five components:
 
-class Machine extends CESKM {
+- **c**ontrol-string, the program expression being evaluated;
+- **e**nvironment, a mapping from variable names to *addresses* or
+  *definitions*;
+- **s**tore, a subsequent mapping from *addresses* to ***values***;
+- **k**ontinuation, the current [continuation][contarticle]; and
+- **m**eta stack, a control stack used in tandem with the continuation.
 
-  // just use the pre-fab s-expression parser
-  constructor(program) { super(parse_cbpv(program)); }
-  primop(op_sym, args) {
-    switch (op_sym) {
-      case "prim:mod": {
-        if ("NumV" === args[0].tag && "NumV" === args[1].tag) {
-          return numval(args[0].v % args[1].v);
-        }
-        break;
-      }
-      default: return super.primop(op_sym, args);
-    }
-  }
-}
+[cekarticle]: https://en.wikipedia.org/wiki/CEK_Machine
+[contarticle]: https://en.wikipedia.org/wiki/Continuation
 
-let machine = new Machine(`
+The language grammar (below) can ultimately be thought of as the operating
+instructions for this machine.
+
+The objective of a CESKM machine is to evaluate the **c**ontrol string down to
+a value.
+Precursor (currently) defines the following language of values, meant to
+resemble JSON primitives (modified slightly for presentation):
+
+```typescript
+type Value
+  = { tag: 'ClosureV', exp: Cbpv, env: Env }
+  | { tag: 'ContinuationV', kont: Kont }
+  | { tag: 'NumV', v: number }
+  | { tag: 'BoolV', v: boolean }
+  | { tag: 'StrV' , v: string }
+  | { tag: 'RecV' , v: Record<string, Value> }
+  | { tag: 'ArrV' , v: Value[] };
+```
+
+In addition to numbers, booleans, strings, records, and arrays, we have
+
+- *closures*: ongoing computations with a closed environment which have more
+  work to be done before they can produce a result `Value`, created with the
+  `!` operator (see `Grammar`); and
+- *continuations*: continuations can be bound to variables using `shift`, and
+  this is what is inside that variable. If you don't know what a continuation
+  is, I refer you to the [article on the subject above][contarticle].
+
+### Step by step
+
+The base class implements a protected method `step` which "purely" acts on a
+*state* value consisting of the five components listed above.
+The output of each `step` is used as the input to the next `step`; evaluation
+terminates when `step` returns a `Value` type instead.
+
+The public method `run` implements this algorithm, but you are free to override
+it or supplement it with your own (for instance, you might want a "debug mode"
+where the machine yields each state to a logging system for review).
+
+## Grammar
+
+`grammar.ts` defines the Precursor grammar, `Cbpv`, as a plain-old-JSON type.
+Here is that definition, modified slightly for presentation.
+
+```typescript
+type Cbpv
+  /* Positive */
+  = { tag: 'NumA' ; v: number }    // eg, 5
+  | { tag: 'BoolA' ; v: boolean }  // #t, #f
+  | { tag: 'StrA' ; v: string }    // "double-quotes only"
+  | { tag: 'SymA' ; v: string }    // immutable
+  | { tag: 'PrimA' ; op: string; erands: Cbpv[] } // see below
+  | { tag: 'SuspendA'; exp: Cbpv }
+  /* Negative */
+  | { tag: 'AppA'; op: Cbpv; erands: Cbpv[] } // eg, (op arg1 arg2)
+  | { tag: 'LamA'; args: string[]; body: Cbpv } // eg, (λ (x) (...))
+  | { tag: 'LetA'; v: string; exp: Cbpv; body: Cbpv } // (let x 5 (...))
+  | { tag: 'LetrecA'; bindings: [string,Cbpv][]; body: Cbpv } // see below
+  | { tag: 'IfA'; c: Cbpv; t: Cbpv; e : Cbpv } //the author is iffy on this one
+  | { tag: 'ResumeA'; v: Cbpv } // weird
+  | { tag: 'ResetA'; exp: Cbpv } // weird
+  | { tag: 'ShiftA'; karg: string; body: Cbpv } // weird
+  ;
+```
+
+`Cbpv` stands for [*call-by-push-value*][cbpvarticle], a language foundation
+which is neither lazy **nor** strict.
+Instead, term evaluation is handled explicitly by two operators: `!`
+("suspend") and `?` ("resume").
+
+[cbpvarticle]: https://en.wikipedia.org/wiki/Call-by-push-value
+
+### A polarizing subject
+
+In call-by-push-value terms are sorted into two (for lack of a better word, oy)
+kinds:
+
+*Positive* terms are data: terms which require no further evaluation or work by
+the machine in order to render as result values.
+Literals (numbers, strings, booleans, etc), variables, and *primops* are all
+positive.
+
+*Primitive operators* ("primops") are basic operations that the Precursor
+machine can perform on data.
+You might think of them as the basic instruction set for a CPU.
+By default the `CESKM` class defines a handful of primops to manipulate the
+basic data types but it is easy (and expected and encouraged) for you to add
+your own; see the unit tests for a concrete example!
+
+*Negative* terms are those which express some **irreversible** work to be done.
+For example, function abstraction (`LamA` above) pops the top frame from the
+argument stack; function application pushes a frame on it and evaluates its
+(negative) operator; an `if` expression essentially chooses between two
+continuations and throws one away; etc.
+
+`!` *suspends* a negative ("active," "ongoing") computation into a closure
+value; `?` *resumes* suspended computations in order to evaluate them.
+
+### To be continued
+
+`shift` and `reset` are [delimited continuation][delimccarticle] operators.
+A *continuation* is an abstract representation of the control state of the
+program (according to Wikipedia).
+It represents a point in the computation with a specified amount of remaining
+work.
+
+[delimccarticle]: https://en.wikipedia.org/wiki/Delimited_continuation
+
+When handled with care, these four operators are very powerful:
+
+```
 (letrec (
-  (is-even (λ (n)
-    (let n (? n)
-    (prim:eq 0 (prim:mod n 2)))))
+  (load (λ () (shift k
+    (! (λ (f) ((? (prim:record-get "load" f)) k))))))
+
+  (save (λ (v) (shift k
+    (! (λ (f) ((? (prim:record-get "save" f)) v k))))))
+
+  (return (λ (x) (shift k
+    (! (λ (_) (? x))))))
+
+  (run-state (λ (st comp)
+    (let handle (reset (? comp))
+    ((? handle) (prim:record-new
+      "load" (! (λ (continue)
+               (let res (! (continue st))
+               ((? run-state) st res))))
+      "save" (! (λ (v continue)
+               (let res (! (continue _))
+               ((? run-state) v res)))))))))
+
+  (increment-state (λ ()
+    (let n ((? load))
+    (let _ ((? save) (prim:add n 1))
+    (let n-plus-1 ((? load))
+    ((? return) n-plus-1))))))
 )
-((? is-even) 10))
-`);
-
-console.log(machine.run());
-```
-
-This will print the following to the console:
-
-```json
-{
-  "tag": "BoolV",
-  "v": true
-}
-```
-
-## The language
-
-Precursor is in some sense a "meta-language," the sort of thing that an
-interpreter or compiler might define for internal usage.
-It is intentionally minimal; part of why I created it is to explore what can be
-done with one particular minimal-ish set of primitives I have encountered.
-
-**Call-by-push-value** is a language foundation that generalizes both *lazy*
-and *strict* evaluation strategies.
-As the basis for Precursor it allows the programmer complete control over term
-evaluation.
-This turns out to be *very* useful.
-
-### Comments
-
-Any semicolon (`;`) not inside of a string signals a *comment*, meaning all the
-text between it and the next end-of-line character will be ignored.
-
-```
-(let x 5 ; this annotation will be ignored
-((? foo) x) ; ...
+((? run-state) 255 (! ((? increment-state))))
 )
+; result: 256
 ```
 
-### Positive terms
+`!`, `?`, `shift`, and `reset` are here used to implement a small [effect
+system][effectsysarticle], in this case modeling a mutable state effect.
 
-TBD
+[effectsysarticle]: https://en.wikipedia.org/wiki/Effect_system
 
-#### Numbers, booleans, and strings
+There's a lot more to say but not a lot of time!
+Hopefully though if you are the sort of person whom this could potentially
+excite, you'll be excited by now.
 
-Because this is a language implemented in JavaScript, the basic literal values
-are numbers, booleans, and strings, as defined by the JSON spec.
+## Parser
 
-```
-(let n 5
-(let s "hello"
-(let b #t
-; etc ...
-)))
-```
+Precursor comes with a parser for a small *s-expression* (think lisp) surface
+language which builds the `Cbpv` expressions evaluated by `CESKM`.
+The `parse_cbpv` function in `parser.ts` can be used without any fuss for
+exactly this.
 
-#### Symbols ("variables")
+This language is meant to closely mirror the structure of the grammar itself;
+it's not supposed to win any awards for usability or ergonomics.
+This is why it exists in a separate module and why `CESKM` consumes a custom
+data type and not source code directly.
 
-As seen above, you can bind values to *symbols*.
-These are immutable; precursor has no native concept of mutation.
+# Questions / Comments / Issues
 
-(Don't worry, we thought about this! We like getting ~~sh~~stuff done too!)
-
-#### "primops"
-
-Ultimately, the *primitive operations* Precursor can perform on values are
-defined as "primops," implemented via the `primop` method on the `CESKM` class.
-A number of default primops are defined, in a namespace the author feels nobody
-is likely to be clamoring for, and you are free to override the method however
-you see fit.
-
-A primop by itself is **not** a value: it cannot be passed as an argument or
-anything.
-However, it *can* be applied to its arguments; this **application** of a primop
-to its arguments is a value term:
-
-```
-(let three (prim:add 1 2)
-((? foo) three))
-```
-
-Above, `(prim:add 1 2)` is a self-contained value-term that can be (and is)
-bound to a symbol.
-
-*This may seem strange; there is a method to the madness but I have to write
-one thing at a time!*
-
-#### Suspensions
-
-### Negative terms
-
-TBD
-
-## *CESKM* machine
-
-A *CESKM* machine is an abstract machine with the following five components,
-hence its name:
-
-- a **c**ontrol-string, the current expression being evaluated;
-- an **e**nvironment mapping symbols to either *addresses* or *definitions*
-  (more control strings);
-- a **s**tore mapping the above *addresses* to *values*;
-- the current **k**ontinuation storing the remainder of the computation to be
-  performed (trippy, huh?); and
-- the **m**eta stack, used by the machine to juggle continuations for effect
-  handling and flow control, among other things.
-
-This implementation is optimized for *correctness*, *readability*, and
-*simplicity*.
-It certainly has room for improvement and optimization.
-One attractive quality, however, is that the evaluation algorithm is rendered
-as a pure value transformation on the CESKM state 5-tuple defined above.
-The practical distinction between *positive* and *negative* terms is made
-immediately clear, and the nuances surrounding *values* versus *terms* are
-illuminated in the separate definitions of `Value` and `Cbpv` and `Kont`, et
-al.
-
-The `step` method represents a single irreversible transformation of the
-machine state.
-The default implementation evaluates a term by constructing an initial state
-around the term and then calling `step` in a loop until it returns a `Value`
-and not a subsequent `State` (see `CESKM#run` in `ceskm.ts`).
-
-This is done purposefully to accommodate creative extension:
-
-TBD precursor site example
-
+Feel free to email the author at `gatlin+precursor@niltag.net`.
+You may also use the "Issues" feature on GitHub to report any feedback.
 
