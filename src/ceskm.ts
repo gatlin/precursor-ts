@@ -297,8 +297,8 @@ export class CESKM {
           let actual_val: Value = kontinuation.vs[0];
           let next_k: Kont = kontinuation.kont;
           meta.unshift(next_k);
-          if (val.tag !== "continuation") {
-            throw new Error(`boo: ${JSON.stringify(val)}`); }
+          if (val.tag !== "continuation")
+            { throw new Error(`boo: ${JSON.stringify(val)}`); }
           else
             { kontinuation = val.kont; }
           val = actual_val;
@@ -318,7 +318,7 @@ export class CESKM {
             meta
           };  }
         default: finished = true; } }
-    throw new Error('Invalid continuation.'); }
+    throw new Error("Invalid continuation."); }
 
   /**
    * @method primop
@@ -332,56 +332,56 @@ export class CESKM {
    */
   protected primop(op_sym: string, args: Value[]): Value {
     switch (op_sym) {
-      case 'prim:mul': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:mul": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return numval(args[0].v * args[1].v); }}
-      case 'prim:add': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:add": {
+        if ('number' === args[0].tag && "number" === args[1].tag)
           { return numval(args[0].v + args[1].v); }}
-      case 'prim:sub': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:sub": {
+        if ('number' === args[0].tag && "number" === args[1].tag)
           { return numval(args[0].v - args[1].v); }}
-      case 'prim:div': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:div": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return numval(args[0].v / args[1].v); }}
-      case 'prim:eq': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:eq": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return boolval(args[0].v === args[1].v); }
-        else if ('boolean' === args[0].tag && 'boolean' === args[1].tag)
+        else if ("boolean" === args[0].tag && "boolean" === args[1].tag)
           { return boolval(args[0].v === args[1].v); }}
-      case 'prim:lt': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:lt": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return boolval(args[0].v < args[1].v); }}
-      case 'prim:gt': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:gt": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return boolval(args[0].v > args[1].v); }}
-      case 'prim:lte': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:lte": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return boolval(args[0].v <= args[1].v); }}
-      case 'prim:gte': {
-        if ('number' === args[0].tag && 'number' === args[1].tag)
+      case "prim:gte": {
+        if ("number" === args[0].tag && "number" === args[1].tag)
           { return boolval(args[0].v >= args[1].v); }}
-      case 'prim:and': {
-        if ('boolean' === args[0].tag && 'boolean' === args[1].tag)
+      case "prim:and": {
+        if ('boolean' === args[0].tag && "boolean" === args[1].tag)
           { return boolval(args[0].v && args[1].v); }}
-      case 'prim:or': {
-        if ('boolean' === args[0].tag && 'boolean' === args[1].tag)
+      case "prim:or": {
+        if ("boolean" === args[0].tag && "boolean" === args[1].tag)
           { return boolval(args[0].v || args[1].v); }}
-      case 'prim:not': {
-        if ('boolean' === args[0].tag)
+      case "prim:not": {
+        if ("boolean" === args[0].tag)
           { return boolval(!args[0].v); }}
-      case 'prim:string-length': {
+      case "prim:string-length": {
         let str: Value = args[0];
         if ("string" !== str.tag)
           { throw new Error(`prim:string-length expects string argument, given ${JSON.stringify(args[0])}.`); }
         return numval(str.v.length); }
-      case 'prim:string-concat': {
+      case "prim:string-concat": {
         let str_l: Value = args[0];
         let str_r: Value = args[1];
         if ("string" !== str_l.tag || "string" !== str_r.tag)
           { throw new Error(`prim:string-concat expects 2 string arguments.`); }
         return strval(str_l.v.concat(str_r.v)); }
-      case 'prim:record-new': {
+      case "prim:record-new": {
         if (0 !== args.length % 2 && 0 !== args.length) {
           throw new Error(
             `Record requires matching pairs of strings and values`); }
@@ -404,7 +404,7 @@ export class CESKM {
         if (!(key_str in rec.v))
           { throw new Error(`No key ${key_str} in record.`); }
         return rec.v[key_str]; }
-      case 'prim:record-set': {
+      case "prim:record-set": {
         let key: Value = args[0];
         let val: Value = args[1];
         let rec: Value = args[2];
@@ -417,10 +417,10 @@ export class CESKM {
       case "prim:record-exists": {
         let key: Value = args[0];
         let rec: Value = args[1];
-        if ("record" !== rec.tag) {
-          throw new Error(`Cannot index non-record: ${rec}`); }
-        if ("string" !== key.tag) {
-          throw new Error(`Record key must be string, given: ${key}`); }
+        if ("record" !== rec.tag)
+          { throw new Error(`Cannot index non-record: ${rec}`); }
+        if ("string" !== key.tag)
+          { throw new Error(`Record key must be string, given: ${key}`); }
         let key_str: string = key.v;
         return boolval(key_str in rec.v); }
       case "prim:record-del": {
@@ -451,10 +451,10 @@ export class CESKM {
         let key: Value = args[0];
         let val: Value = args[1];
         let arr: Value = args[2];
-        if ("array" !== arr.tag) {
-          throw new Error(`Cannot index non-array: ${arr}`); }
-        if ("number" !== key.tag) {
-          throw new Error(`Array index must be number, given: ${key}`); }
+        if ("array" !== arr.tag)
+          { throw new Error(`Cannot index non-array: ${arr}`); }
+        if ("number" !== key.tag)
+          { throw new Error(`Array index must be number, given: ${key}`); }
         arr.v[key.v] = val;
         return arr; }
       case "prim:array-length": {
@@ -464,10 +464,10 @@ export class CESKM {
         let arr: Value = args[0];
         if ("array" !== arr.tag)
           { throw new Error(`prim:array-length expects array argument.`); }
-        return numval(arr.v.length); } 
+        return numval(arr.v.length); }
       case "prim:array-concat": {
         if ("array" === args[0].tag && "array" === args[1].tag)
           { return arrval(args[0].v.concat(args[1].v)); } } }
-    let s = '';
+    let s = "";
     for (let arg of args) { s += ` ${arg.tag}`; }
     throw new Error(`bad prim op or arguments: ${op_sym} - ${s}`); }}
