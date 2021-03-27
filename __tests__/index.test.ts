@@ -23,7 +23,7 @@ class DebugMachine extends CESKM {
 }
 
 describe("index", () => {
-  test('sanity check 1', () => {
+  test('scenario check 1', () => {
     expect(new DebugMachine(`
 (letrec (
   (sqr-int (λ (n) (prim:mul n n)))
@@ -35,7 +35,7 @@ describe("index", () => {
         v: 4761
     });
   });
-  test("sanity check 2", () => {
+  test("scenario check 2", () => {
     expect(new DebugMachine("( (\\ (x) (prim:mul x 2)) 210)").
       run()).
       toStrictEqual({
@@ -44,7 +44,7 @@ describe("index", () => {
       });
   });
 
-  test("sanity check 3", () => {
+  test("scenario check 3", () => {
     expect(new DebugMachine("(let n (prim:add 1 2) (prim:mul n 2))").
       run()).
       toStrictEqual({
@@ -53,7 +53,7 @@ describe("index", () => {
       });
   });
 
-  test("sanity check 4", () => {
+  test("scenario check 4", () => {
     expect(new DebugMachine(`
 (letrec (
   (fact-tailrec (λ (n total)
@@ -71,7 +71,7 @@ describe("index", () => {
       });
   });
 
-  test("sanity check 5", () => {
+  test("scenario check 5", () => {
     expect(new DebugMachine(`
 (letrec (
   (times (λ (a b) (prim:mul a b)))
@@ -85,7 +85,7 @@ describe("index", () => {
       });
   });
 
-  test("sanity check 6", () => {
+  test("scenario check 6", () => {
     expect(new DebugMachine(`
 (let f (reset (shift k k))
 (let n (f (prim:add 10 55))
@@ -97,7 +97,7 @@ describe("index", () => {
         v: 195
       });
   });
-  test("sanity check 7", () => {
+  test("scenario check 7", () => {
     expect(new DebugMachine(`
 (letrec (
   (seventeen (λ ()
@@ -124,7 +124,7 @@ describe("index", () => {
         v: 355687428096000
       });
   });
-  test('sanity check 8', () => {
+  test('scenario check 8', () => {
     expect(new DebugMachine(`
 (letrec (
   (make-reducer (λ (initial-value) (letrec (
@@ -151,7 +151,7 @@ describe("index", () => {
         v: 911666
       });
   });
-  test('sanity check 9', () => {
+  test('scenario check 9', () => {
     expect(new DebugMachine(`
 (letrec (
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
@@ -179,7 +179,7 @@ describe("index", () => {
         v: 6
       });
   });
-  test('sanity check 10', () => {
+  test('scenario check 10', () => {
     expect(new DebugMachine(`
 (letrec (
 
@@ -226,7 +226,7 @@ describe("index", () => {
         v: 911672
       });
   });
-  test('sanity check 11', () => {
+  test('scenario check 11', () => {
     let machine = new DebugMachine(`
 (letrec (
   (pair (\\ (a b)
@@ -258,7 +258,7 @@ describe("index", () => {
   }
  });
 
-  test('sanity check 12', () => {
+  test('scenario check 12', () => {
       expect(new DebugMachine(`
 (letrec (
   (foldr (λ (c e xs)
@@ -294,7 +294,7 @@ describe("index", () => {
         });
   });
 
-  test('sanity check 13', () => {
+  test('scenario check 13', () => {
       expect(new DebugMachine(`
 (letrec (
   (foldr (λ (c e xs)
