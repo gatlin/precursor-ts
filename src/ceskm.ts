@@ -8,37 +8,37 @@ const clone = <A>(a: A): A => JSON.parse(JSON.stringify(a));
 
 /* Continuations and Values */
 export type Kont
-  = { tag: 'HaltK' }
-  | { tag: 'ArgK', vs: Value[], kont: Kont }
-  | { tag: 'LetK', sym: string, exp: Cbpv, env: Env, kont: Kont } ;
-export const haltk = (): Kont => ({ tag: 'HaltK'});
+  = { tag: "top" }
+  | { tag: "arg", vs: Value[], kont: Kont }
+  | { tag: "let", sym: string, exp: Cbpv, env: Env, kont: Kont } ;
+export const topk = (): Kont => ({ tag: 'top'});
 export const argk = (vs: Value[], kont: Kont): Kont => ({
-  tag: 'ArgK',
+  tag: 'arg',
   vs, kont });
 export const letk = (sym: string, exp: Cbpv, env: Env, kont: Kont): Kont => ({
-  tag: 'LetK',
+  tag: 'let',
   sym, exp, env, kont });
 
 export type Value
-  = { tag: 'ClosureV', exp: Cbpv, env: Env }
-  | { tag: 'ContinuationV', kont: Kont }
-  | { tag: 'NumV', v: number }
-  | { tag: 'BoolV', v: boolean }
-  | { tag: 'StrV' , v: string }
-  | { tag: 'RecV' , v: Record<string, Value> }
-  | { tag: 'ArrV' , v: Value[] };
+  = { tag: "closure", exp: Cbpv, env: Env }
+  | { tag: "continuation", kont: Kont }
+  | { tag: "number", v: number }
+  | { tag: "boolean", v: boolean }
+  | { tag: "string" , v: string }
+  | { tag: "record" , v: Record<string, Value> }
+  | { tag: "array" , v: Value[] };
 export const closure = (exp: Cbpv, env: Env): Value => ({
-  tag: 'ClosureV',
+  tag: "closure",
   exp,
   env });
 export const continuation = (kont: Kont): Value => ({
-  tag: 'ContinuationV',
+  tag: "continuation",
   kont });
-export const numval = (v: number): Value => ({ tag: 'NumV', v });
-export const boolval = (v: boolean): Value => ({ tag: 'BoolV', v });
-export const strval = (v: string): Value => ({ tag: 'StrV', v });
-export const recval = (v: Record<string,Value>): Value => ({ tag: 'RecV', v });
-export const arrval = (v: Value[]): Value => ({ tag: 'ArrV', v });
+export const numval = (v: number): Value => ({ tag: "number", v });
+export const boolval = (v: boolean): Value => ({ tag: "boolean", v });
+export const strval = (v: string): Value => ({ tag: "string", v });
+export const recval = (v: Record<string,Value>): Value => ({ tag: "record", v });
+export const arrval = (v: Value[]): Value => ({ tag: "array", v });
 
 /* Environment and store */
 
@@ -83,7 +83,7 @@ export class CESKM {
       control: this.control,
       environment: [],
       store: {},
-      kontinuation: haltk(),
+      kontinuation: topk(),
       meta: [] }; }
 
   /**
@@ -119,12 +119,12 @@ export class CESKM {
     let finished: boolean = false;
     while (!finished) {
       switch (expr.tag) {
-        case 'NumA': return numval(expr.v);
-        case 'BoolA': return boolval(expr.v);
-        case 'StrA': return strval(expr.v); 
-        case 'SymA': {
+        case "NumA": return numval(expr.v);
+        case "BoolA": return boolval(expr.v);
+        case "StrA": return strval(expr.v);
+        case "SymA": {
           if ("_" === expr.v)
-            { return continuation(haltk()); }
+            { return continuation(topk()); }
           else {
             let addr_or_val: string | Cbpv =
               env_lookup(expr.v, env);
@@ -132,14 +132,14 @@ export class CESKM {
               ? store[<string>addr_or_val]
               : closure(<Cbpv>addr_or_val, env); }
           break; }
-        case 'SuspendA': {
+        case "SuspendA": {
           let { exp: cexp } = expr;
           if (!cbpv_is_positive(cexp)) {
             return closure(cexp, env); }
           else {
             expr = cexp;
             break;}}
-        case 'PrimA': {
+        case "PrimA": {
           return this.primop(
             expr.op,
             expr.erands.map(
@@ -171,25 +171,25 @@ export class CESKM {
 
     while (!finished) {
       switch (control.tag) {
-        case 'AppA': {
+        case "AppA": {
           let vals = control.erands.map(
             (erand: Cbpv) => this.positive(erand, environment, store));
           control = control.op;
           kontinuation = argk(vals, kontinuation);
           break; }
-        case 'LetA': {
+        case "LetA": {
           let { v, exp, body } = control;
           control = exp;
           kontinuation = letk(v, body, environment, kontinuation );
           break; }
-        case 'LetrecA': {
+        case "LetrecA": {
           let frame: Frame = {};
           for (let binding of control.bindings)
             { frame[<string>binding[0]] = <Cbpv>binding[1]; }
           control = control.body;
           env_push_frame(frame, environment);
           break; }
-        case 'ShiftA': {
+        case "ShiftA": {
           let addr: string = this.gensym();
           let cc: Kont = kontinuation;
           let frame: Frame = {};
@@ -197,17 +197,17 @@ export class CESKM {
           env_push_frame(frame, environment);
           control = control.body;
           store[addr] = continuation(cc);
-          kontinuation = haltk();
+          kontinuation = topk();
           return {
             control,
             environment,
             store,
             kontinuation,
             meta }; }
-        case 'ResetA': {
+        case "ResetA": {
           let cc: Kont = kontinuation;
           control = control.exp;
-          kontinuation = haltk();
+          kontinuation = topk();
           meta.unshift(cc);
           return {
             control,
@@ -215,10 +215,10 @@ export class CESKM {
             store,
             kontinuation,
             meta }; }
-        case 'IfA': {
+        case "IfA": {
           let cv = this.positive(control.c, environment, store);
-          if ('BoolV' !== cv.tag)
-            { throw new Error('`if` conditional must be boolean'); }
+          if ("boolean" !== cv.tag)
+            { throw new Error("`if` conditional must be boolean"); }
           control = cv.v ? control.t : control.e;
           return {
             control,
@@ -226,9 +226,9 @@ export class CESKM {
             store,
             kontinuation,
             meta }; }
-        case 'ResumeA': {
+        case "ResumeA": {
           let val = this.positive(control.v, environment, store);
-          if ("ClosureV" === val.tag) {
+          if ("closure" === val.tag) {
             control = val.exp;
             environment = val.env;
             return {
@@ -239,9 +239,9 @@ export class CESKM {
               meta }; }
           else {
             return this.continue(val, kontinuation, store, meta); }}
-        case 'LamA': {
+        case "LamA": {
           switch (kontinuation.tag) {
-            case 'ArgK': {
+            case "arg": {
               let frame: Frame = {};
               for (let i = 0; i < control.args.length; i++) {
                 let addr: string = this.gensym();
@@ -285,7 +285,7 @@ export class CESKM {
     let finished: boolean = false;
     while (!finished) {
       switch (kontinuation.tag) {
-        case 'HaltK': {
+        case "top": {
           if (meta.length === 0) {
             this.result = val; // mission accomplished
             return val; }
@@ -293,17 +293,17 @@ export class CESKM {
             let k: Kont = meta.shift()!;
             kontinuation = k; }
           break; }
-        case 'ArgK': {
+        case "arg": {
           let actual_val: Value = kontinuation.vs[0];
           let next_k: Kont = kontinuation.kont;
           meta.unshift(next_k);
-          if (val.tag !== 'ContinuationV') {
+          if (val.tag !== "continuation") {
             throw new Error(`boo: ${JSON.stringify(val)}`); }
           else
             { kontinuation = val.kont; }
           val = actual_val;
           break; }
-        case 'LetK': {
+        case "let": {
           let { sym, env, exp, kont } = kontinuation;
           let frame: Frame = {};
           let addr: string = this.gensym();
@@ -333,52 +333,52 @@ export class CESKM {
   protected primop(op_sym: string, args: Value[]): Value {
     switch (op_sym) {
       case 'prim:mul': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return numval(args[0].v * args[1].v); }}
       case 'prim:add': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return numval(args[0].v + args[1].v); }}
       case 'prim:sub': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return numval(args[0].v - args[1].v); }}
       case 'prim:div': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return numval(args[0].v / args[1].v); }}
       case 'prim:eq': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return boolval(args[0].v === args[1].v); }
-        else if ('BoolV' === args[0].tag && 'BoolV' === args[1].tag)
+        else if ('boolean' === args[0].tag && 'boolean' === args[1].tag)
           { return boolval(args[0].v === args[1].v); }}
       case 'prim:lt': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return boolval(args[0].v < args[1].v); }}
       case 'prim:gt': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return boolval(args[0].v > args[1].v); }}
       case 'prim:lte': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return boolval(args[0].v <= args[1].v); }}
       case 'prim:gte': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag)
+        if ('number' === args[0].tag && 'number' === args[1].tag)
           { return boolval(args[0].v >= args[1].v); }}
       case 'prim:and': {
-        if ('BoolV' === args[0].tag && 'BoolV' === args[1].tag)
+        if ('boolean' === args[0].tag && 'boolean' === args[1].tag)
           { return boolval(args[0].v && args[1].v); }}
       case 'prim:or': {
-        if ('BoolV' === args[0].tag && 'BoolV' === args[1].tag)
+        if ('boolean' === args[0].tag && 'boolean' === args[1].tag)
           { return boolval(args[0].v || args[1].v); }}
       case 'prim:not': {
-        if ('BoolV' === args[0].tag)
+        if ('boolean' === args[0].tag)
           { return boolval(!args[0].v); }}
       case 'prim:string-length': {
         let str: Value = args[0];
-        if ("StrV" !== str.tag)
+        if ("string" !== str.tag)
           { throw new Error(`prim:string-length expects string argument, given ${JSON.stringify(args[0])}.`); }
         return numval(str.v.length); }
       case 'prim:string-concat': {
         let str_l: Value = args[0];
         let str_r: Value = args[1];
-        if ("StrV" !== str_l.tag || "StrV" !== str_r.tag)
+        if ("string" !== str_l.tag || "string" !== str_r.tag)
           { throw new Error(`prim:string-concat expects 2 string arguments.`); }
         return strval(str_l.v.concat(str_r.v)); }
       case 'prim:record-new': {
@@ -389,16 +389,16 @@ export class CESKM {
         for (let i = 0; i < args.length; i += 2) {
           let key: Value = args[i];
           let val: Value = args[i+1];
-          if ("StrV" !== key.tag) {
+          if ("string" !== key.tag) {
             throw new Error(`Record key must be string, given: ${key}`); }
           v[key.v] = val; }
         return recval(v); }
-      case 'prim:record-get': {
+      case "prim:record-get": {
         let key: Value = args[0];
         let rec: Value = args[1];
-        if ("RecV" !== rec.tag)
+        if ("record" !== rec.tag)
           { throw new Error(`Cannot index non-record: ${rec}`); }
-        if ("StrV" !== key.tag)
+        if ("string" !== key.tag)
           { throw new Error(`Record key must be string, given: ${key}`); }
         let key_str: string = key.v;
         if (!(key_str in rec.v))
@@ -408,38 +408,38 @@ export class CESKM {
         let key: Value = args[0];
         let val: Value = args[1];
         let rec: Value = args[2];
-        if ("RecV" !== rec.tag) {
+        if ("record" !== rec.tag) {
           throw new Error(`Cannot index non-record: ${rec}`); }
-        if ("StrV" !== key.tag) {
+        if ("string" !== key.tag) {
           throw new Error(`Record key must be string, given: ${key}`); }
         rec.v[key.v] = val;
         return rec; }
-      case 'prim:record-exists': {
+      case "prim:record-exists": {
         let key: Value = args[0];
         let rec: Value = args[1];
-        if ("RecV" !== rec.tag) {
+        if ("record" !== rec.tag) {
           throw new Error(`Cannot index non-record: ${rec}`); }
-        if ("StrV" !== key.tag) {
+        if ("string" !== key.tag) {
           throw new Error(`Record key must be string, given: ${key}`); }
         let key_str: string = key.v;
         return boolval(key_str in rec.v); }
-      case 'prim:record-del': {
+      case "prim:record-del": {
         let key: Value = args[0];
         let rec: Value = args[1];
-        if ("RecV" !== rec.tag) {
+        if ("record" !== rec.tag) {
           throw new Error(`Cannot index non-record: ${rec}`); }
-        if ("StrV" !== key.tag) {
+        if ("string" !== key.tag) {
           throw new Error(`Record key must be string, given: ${key}`); }
         delete rec.v[<string>key.v];
         return rec; }
 
-      case 'prim:array-new': { return arrval(clone(args)); }
-      case 'prim:array-get': {
+      case "prim:array-new": { return arrval(clone(args)); }
+      case "prim:array-get": {
         let idx: Value = args[0];
         let arr: Value = args[1];
-        if ("ArrV" !== arr.tag)
+        if ("array" !== arr.tag)
           { throw new Error(`You cannot array-index a non-array.`); }
-        if ("NumV" !== idx.tag)
+        if ("number" !== idx.tag)
           { throw new Error(`Array index must be a number, given: ${idx}`); }
         let idx_num: number = idx.v;
         let arr_v: Value[] = arr.v;
@@ -452,9 +452,9 @@ export class CESKM {
         let key: Value = args[0];
         let val: Value = args[1];
         let arr: Value = args[2];
-        if ("ArrV" !== arr.tag) {
+        if ("array" !== arr.tag) {
           throw new Error(`Cannot index non-array: ${arr}`); }
-        if ("NumV" !== key.tag) {
+        if ("number" !== key.tag) {
           throw new Error(`Array index must be number, given: ${key}`); }
         arr.v[key.v] = val;
         return arr; }
@@ -463,7 +463,7 @@ export class CESKM {
           throw new Error(
             `prim:array-length has 1 argument (given ${args.length})`); }
         let arr: Value = args[0];
-        if ("ArrV" !== arr.tag)
+        if ("array" !== arr.tag)
           { throw new Error(`prim:array-length expects array argument.`); }
         return numval(arr.v.length); } }
     let s = '';

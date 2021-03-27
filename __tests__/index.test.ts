@@ -4,6 +4,7 @@ import {
   Kont,
   Parser,
   build_cbpv,
+  numval,
   parse_cbpv
 } from "../src/index";
 
@@ -11,9 +12,9 @@ class DebugMachine extends CESKM {
   constructor (program: string) { super(parse_cbpv(program)); }
   protected primop(op_sym: string, args: Value[]): Value {
     switch (op_sym) {
-      case 'prim:mod': {
-        if ('NumV' === args[0].tag && 'NumV' === args[1].tag) {
-          return { tag: 'NumV', v: args[0].v % args[1].v };
+      case "prim:mod": {
+        if ("number" === args[0].tag && "number" === args[1].tag) {
+          return numval(args[0].v % args[1].v);
         }
       }
       default: return super.primop(op_sym, args);
@@ -21,7 +22,7 @@ class DebugMachine extends CESKM {
   }
 }
 
-describe('index', () => {
+describe("index", () => {
   test('sanity check 1', () => {
     expect(new DebugMachine(`
 (letrec (
@@ -30,29 +31,29 @@ describe('index', () => {
 ((? sqr-int) 69))`).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 4761
     });
   });
-  test('sanity check 2', () => {
+  test("sanity check 2", () => {
     expect(new DebugMachine("( (\\ (x) (prim:mul x 2)) 210)").
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: 'number',
         v: 420
       });
   });
 
-  test('sanity check 3', () => {
+  test("sanity check 3", () => {
     expect(new DebugMachine("(let n (prim:add 1 2) (prim:mul n 2))").
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: 'number',
         v: 6
       });
   });
 
-  test('sanity check 4', () => {
+  test("sanity check 4", () => {
     expect(new DebugMachine(`
 (letrec (
   (fact-tailrec (λ (n total)
@@ -65,12 +66,12 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 1814400
       });
   });
 
-  test('sanity check 5', () => {
+  test("sanity check 5", () => {
     expect(new DebugMachine(`
 (letrec (
   (times (λ (a b) (prim:mul a b)))
@@ -79,12 +80,12 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 8
       });
   });
 
-  test('sanity check 6', () => {
+  test("sanity check 6", () => {
     expect(new DebugMachine(`
 (let f (reset (shift k k))
 (let n (f (prim:add 10 55))
@@ -92,11 +93,11 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 195
       });
   });
-  test('sanity check 7', () => {
+  test("sanity check 7", () => {
     expect(new DebugMachine(`
 (letrec (
   (seventeen (λ ()
@@ -119,7 +120,7 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 355687428096000
       });
   });
@@ -146,7 +147,7 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 911666
       });
   });
@@ -174,7 +175,7 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: 'number',
         v: 6
       });
   });
@@ -221,7 +222,7 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 911672
       });
   });
@@ -248,7 +249,7 @@ describe('index', () => {
     let res = machine.run();
     expect(res).
       toStrictEqual({
-        tag: "BoolV",
+        tag: "boolean",
         v: false
     });
   }
@@ -288,7 +289,7 @@ describe('index', () => {
       `).
         run()).
         toStrictEqual({
-          tag: 'NumV',
+          tag: "number",
           v: 7
         });
   });
@@ -325,7 +326,7 @@ describe('index', () => {
       `).
         run()).
         toStrictEqual({
-          tag: 'NumV',
+          tag: "number",
           v: 17
         });
   });
@@ -344,18 +345,18 @@ describe('index', () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 1814400
       });
   });
 
-  test('string functions: length', () => {
+  test("string functions: length", () => {
     expect(new DebugMachine(`
     (prim:string-length "bottom text")
     `).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 11
       });
   });
@@ -367,10 +368,10 @@ describe('index', () => {
 `).
            run()).
       toStrictEqual({
-        tag: 'RecV',
+        tag: "record",
         v: {
           'key2': {
-            tag: 'BoolV',
+            tag: "boolean",
             v: true
           }
         }
@@ -410,7 +411,7 @@ describe('index', () => {
 )`).
       run()).
       toStrictEqual({
-        tag: 'NumV',
+        tag: "number",
         v: 420
     });
   });
