@@ -119,10 +119,10 @@ export class CESKM {
     let finished: boolean = false;
     while (!finished) {
       switch (expr.tag) {
-        case "NumA": return numval(expr.v);
-        case "BoolA": return boolval(expr.v);
-        case "StrA": return strval(expr.v);
-        case "SymA": {
+        case "cbpv_number": return numval(expr.v);
+        case "cbpv_boolean": return boolval(expr.v);
+        case "cbpv_string": return strval(expr.v);
+        case "cbpv_symbol": {
           if ("_" === expr.v)
             { return continuation(topk()); }
           else {
@@ -132,14 +132,14 @@ export class CESKM {
               ? store[<string>addr_or_val]
               : closure(<Cbpv>addr_or_val, env); }
           break; }
-        case "SuspendA": {
+        case "cbpv_suspend": {
           let { exp: cexp } = expr;
           if (!cbpv_is_positive(cexp)) {
             return closure(cexp, env); }
           else {
             expr = cexp;
             break;}}
-        case "PrimA": {
+        case "cbpv_primop": {
           return this.primop(
             expr.op,
             expr.erands.map(
@@ -171,25 +171,25 @@ export class CESKM {
 
     while (!finished) {
       switch (control.tag) {
-        case "AppA": {
+        case "cbpv_apply": {
           let vals = control.erands.map(
             (erand: Cbpv) => this.positive(erand, environment, store));
           control = control.op;
           kontinuation = argk(vals, kontinuation);
           break; }
-        case "LetA": {
+        case "cbpv_let": {
           let { v, exp, body } = control;
           control = exp;
           kontinuation = letk(v, body, environment, kontinuation );
           break; }
-        case "LetrecA": {
+        case "cbpv_letrec": {
           let frame: Frame = {};
           for (let binding of control.bindings)
             { frame[<string>binding[0]] = <Cbpv>binding[1]; }
           control = control.body;
           env_push_frame(frame, environment);
           break; }
-        case "ShiftA": {
+        case "cbpv_shift": {
           let addr: string = this.gensym();
           let cc: Kont = kontinuation;
           let frame: Frame = {};
@@ -204,7 +204,7 @@ export class CESKM {
             store,
             kontinuation,
             meta }; }
-        case "ResetA": {
+        case "cbpv_reset": {
           let cc: Kont = kontinuation;
           control = control.exp;
           kontinuation = topk();
@@ -215,7 +215,7 @@ export class CESKM {
             store,
             kontinuation,
             meta }; }
-        case "IfA": {
+        case "cbpv_if": {
           let cv = this.positive(control.c, environment, store);
           if ("boolean" !== cv.tag)
             { throw new Error("`if` conditional must be boolean"); }
@@ -226,7 +226,7 @@ export class CESKM {
             store,
             kontinuation,
             meta }; }
-        case "ResumeA": {
+        case "cbpv_resume": {
           let val = this.positive(control.v, environment, store);
           if ("closure" === val.tag) {
             control = val.exp;
@@ -239,7 +239,7 @@ export class CESKM {
               meta }; }
           else {
             return this.continue(val, kontinuation, store, meta); }}
-        case "LamA": {
+        case "cbpv_abstract": {
           switch (kontinuation.tag) {
             case "arg": {
               let frame: Frame = {};
