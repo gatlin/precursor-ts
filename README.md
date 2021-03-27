@@ -57,13 +57,13 @@ resemble JSON primitives (modified slightly for presentation):
 
 ```typescript
 type Value
-  = { tag: 'ClosureV', exp: Cbpv, env: Env }
-  | { tag: 'ContinuationV', kont: Kont }
-  | { tag: 'NumV', v: number }
-  | { tag: 'BoolV', v: boolean }
-  | { tag: 'StrV' , v: string }
-  | { tag: 'RecV' , v: Record<string, Value> }
-  | { tag: 'ArrV' , v: Value[] };
+  = { tag: 'closure', exp: Cbpv, env: Env }
+  | { tag: 'continuation', kont: Kont }
+  | { tag: 'number', v: number }
+  | { tag: 'boolean', v: boolean }
+  | { tag: 'string' , v: string }
+  | { tag: 'record' , v: Record<string, Value> }
+  | { tag: 'array' , v: Value[] };
 ```
 
 In addition to numbers, booleans, strings, records, and arrays, we have
@@ -94,21 +94,21 @@ Here is that definition, modified slightly for presentation.
 ```typescript
 type Cbpv
   /* Positive */
-  = { tag: 'NumA' ; v: number }    // eg, 5
-  | { tag: 'BoolA' ; v: boolean }  // #t, #f
-  | { tag: 'StrA' ; v: string }    // "double-quotes only"
-  | { tag: 'SymA' ; v: string }    // immutable
-  | { tag: 'PrimA' ; op: string; erands: Cbpv[] } // see below
-  | { tag: 'SuspendA'; exp: Cbpv }
+  = { tag: 'cbpv_number' ; v: number }    // eg, 5
+  | { tag: 'cbpv_boolean' ; v: boolean }  // #t, #f
+  | { tag: 'cbpv_string' ; v: string }    // "double-quotes only"
+  | { tag: 'cbpv_symbol' ; v: string }    // immutable
+  | { tag: 'cbpv_primop' ; op: string; erands: Cbpv[] } // see below
+  | { tag: 'cbpv_suspend'; exp: Cbpv }
   /* Negative */
-  | { tag: 'AppA'; op: Cbpv; erands: Cbpv[] } // eg, (op arg1 arg2)
-  | { tag: 'LamA'; args: string[]; body: Cbpv } // eg, (λ (x) (...))
-  | { tag: 'LetA'; v: string; exp: Cbpv; body: Cbpv } // (let x 5 (...))
-  | { tag: 'LetrecA'; bindings: [string,Cbpv][]; body: Cbpv } // see below
-  | { tag: 'IfA'; c: Cbpv; t: Cbpv; e : Cbpv } //the author is iffy on this one
-  | { tag: 'ResumeA'; v: Cbpv } // weird
-  | { tag: 'ResetA'; exp: Cbpv } // weird
-  | { tag: 'ShiftA'; karg: string; body: Cbpv } // weird
+  | { tag: 'cbpv_apply'; op: Cbpv; erands: Cbpv[] } // eg, (op arg1 arg2)
+  | { tag: 'cbpv_abstract'; args: string[]; body: Cbpv } // eg, (λ (x) (...))
+  | { tag: 'cbpv_let'; v: string; exp: Cbpv; body: Cbpv } // (let x 5 (...))
+  | { tag: 'cbpv_letrec'; bindings: [string,Cbpv][]; body: Cbpv } // see below
+  | { tag: 'cbpv_if'; c: Cbpv; t: Cbpv; e : Cbpv } //the author is iffy on this one
+  | { tag: 'cbpv_resume'; v: Cbpv } // weird
+  | { tag: 'cbpv_reset'; exp: Cbpv } // weird
+  | { tag: 'cbpv_shift'; karg: string; body: Cbpv } // weird
   ;
 ```
 
@@ -137,10 +137,10 @@ basic data types but it is easy (and expected and encouraged) for you to add
 your own; see the unit tests for a concrete example!
 
 *Negative* terms are those which express some **irreversible** work to be done.
-For example, function abstraction (`LamA` above) pops the top frame from the
-argument stack; function application pushes a frame on it and evaluates its
-(negative) operator; an `if` expression essentially chooses between two
-continuations and throws one away; etc.
+For example, function abstraction (`cbpv_abstract` above) pops the top frame
+from the argument stack; function application pushes a frame on it and
+evaluates its (negative) operator; an `if` expression essentially chooses
+between two continuations and throws one away; etc.
 
 `!` *suspends* a negative ("active," "ongoing") computation into a closure
 value; `?` *resumes* suspended computations in order to evaluate them.
