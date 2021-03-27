@@ -432,7 +432,6 @@ export class CESKM {
           throw new Error(`Record key must be string, given: ${key}`); }
         delete rec.v[<string>key.v];
         return rec; }
-
       case "prim:array-new": { return arrval(clone(args)); }
       case "prim:array-get": {
         let idx: Value = args[0];
@@ -448,7 +447,7 @@ export class CESKM {
         if (idx_num >= arr_v.length)
           { throw new Error(`Array index out of bounds error`); }
         return arr_v[idx_num]; }
-      case 'prim:array-set': {
+      case "prim:array-set": {
         let key: Value = args[0];
         let val: Value = args[1];
         let arr: Value = args[2];
@@ -458,14 +457,17 @@ export class CESKM {
           throw new Error(`Array index must be number, given: ${key}`); }
         arr.v[key.v] = val;
         return arr; }
-      case 'prim:array-length': {
+      case "prim:array-length": {
         if (1 !== args.length) {
           throw new Error(
             `prim:array-length has 1 argument (given ${args.length})`); }
         let arr: Value = args[0];
         if ("array" !== arr.tag)
           { throw new Error(`prim:array-length expects array argument.`); }
-        return numval(arr.v.length); } }
+        return numval(arr.v.length); } 
+      case "prim:array-concat": {
+        if ("array" === args[0].tag && "array" === args[1].tag)
+          { return arrval(args[0].v.concat(args[1].v)); } } }
     let s = '';
     for (let arg of args) { s += ` ${arg.tag}`; }
     throw new Error(`bad prim op or arguments: ${op_sym} - ${s}`); }}

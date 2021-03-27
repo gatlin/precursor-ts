@@ -5,6 +5,7 @@ import {
   Parser,
   build_cbpv,
   numval,
+  arrval,
   parse_cbpv
 } from "../src/index";
 
@@ -378,41 +379,18 @@ describe("index", () => {
       });
   });
 
-  test('string, record, array, and comment test', () => {
+
+  test('array test', () => {
     expect(new DebugMachine(`
-(letrec (
-  ; comment test 1
-  (load (λ () (shift k ;; comment test 2
-    (! (λ (f) ((? (prim:record-get "load" f)) k))))))
-
-  (save (λ (v) (shift k
-    (! (λ (f) ((? (prim:record-get "save" f)) v k))))))
-
-  (return (λ (x) (shift k
-    (! (λ (_) (? x))))))
-
-  (run-state (λ (st comp)
-    (let handle (reset (? comp))
-    ((? handle) (prim:record-new
-      "load" (! (λ (continue)
-               (let res (! (continue st))
-               ((? run-state) st res))))
-      "save" (! (λ (v continue)
-               (let res (! (continue _))
-               ((? run-state) v res)))))))))
-
-  (increment-state (λ ()
-    (let n ((? load))
-    (let _ ((? save) (prim:add n 1))
-    (let n-plus-1 ((? load))
-    ((? return) n-plus-1))))))
-)
-((? run-state) 419 (! ((? increment-state))))
-)`).
+(let a1 (prim:array-new 1 2 3)
+(let a2 (prim:array-new)
+(let a3 (prim:array-concat a2 a1)
+(prim:array-length a3))))
+`).
       run()).
       toStrictEqual({
         tag: "number",
-        v: 420
+        v: 3
     });
   });
 });
