@@ -1,22 +1,146 @@
 import {
   CESKM,
   Value,
-  Kont,
-  Parser,
-  build_cbpv,
-  numval,
-  arrval,
   parse_cbpv
 } from "../src/index";
 
-class DebugMachine extends CESKM {
+type Val = number | boolean | null ;
+
+class DebugMachine<Val> extends CESKM<Val> {
   constructor (program: string) { super(parse_cbpv(program)); }
-  protected primop(op_sym: string, args: Value[]): Value {
+  protected literal(v: any): Value<Val> {
+    if ("number" === typeof v
+     || "boolean" === typeof v
+     || null === v)
+      { return { v }; }
+    throw new Error(`${v} not a primitive value`);
+  }
+  protected primop(op_sym: string, args: Value<Val>[]): Value<Val> {
     switch (op_sym) {
-      case "prim:mod": {
-        if ("number" === args[0].tag && "number" === args[1].tag) {
-          return numval(args[0].v % args[1].v);
+      case "prim:mul": {
+        if (! ("v" in args[0]) || ! ("v" in args[1]))
+          { throw new Error(`arguments must be values`); }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+          { throw new Error(`arguments must be numbers`); }
+        let result: unknown = args[0].v * args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:add": {
+        if (! ("v" in args[0]) || ! ("v" in args[1]))
+          { throw new Error(`arguments must be values`); }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+          { throw new Error(`arguments must be numbers`); }
+        let result: unknown = args[0].v + args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:sub": {
+        if (! ("v" in args[0]) || ! ("v" in args[1]))
+          { throw new Error(`arguments must be values`); }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+          { throw new Error(`arguments must be numbers`); }
+        let result: unknown = args[0].v - args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:div": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
         }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+          throw new Error(`arguments must be numbers`);
+        }
+        let result: unknown = args[0].v / args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:mod": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+          throw new Error(`arguments must be numbers`);
+        }
+        let result: unknown = args[0].v % args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:eq": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if (("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+         && ("boolean" !== typeof args[0].v || "boolean" !== typeof args[1].v) ) {
+          throw new Error(`arguments must be numbers or booleans`);
+        }
+        let result: unknown = args[0].v === args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:lt": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+          throw new Error(`arguments must be numbers`);
+        }
+        let result: unknown = args[0].v < args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:lte": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+          throw new Error(`arguments must be numbers`);
+        }
+        let result: unknown = args[0].v <= args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:gt": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+          throw new Error(`arguments must be numbers`);
+        }
+        let result: unknown = args[0].v > args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:gte": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+          throw new Error(`arguments must be numbers`);
+        }
+        let result: unknown = args[0].v >= args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:and": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("boolean" !== typeof args[0].v || "boolean" !== typeof args[1].v) {
+          throw new Error(`arguments must be booleans`);
+        }
+        let result: unknown = args[0].v && args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:or": {
+        if (! ("v" in args[0]) || ! ("v" in args[1])) {
+          throw new Error(`arguments must be values`);
+        }
+        if ("boolean" !== typeof args[0].v || "boolean" !== typeof args[1].v) {
+          throw new Error(`arguments must be booleans`);
+        }
+        let result: unknown = args[0].v || args[1].v;
+        return { v: result as Val };
+      }
+      case "prim:not": {
+        if (! ("v" in args[0]) ) {
+          throw new Error(`argument must be a value`);
+        }
+        if ("boolean" !== typeof args[0].v) {
+          throw new Error(`argument must be a boolean`);
+        }
+        let result: unknown = !args[0].v;
+        return { v: result as Val };
       }
       default: return super.primop(op_sym, args);
     }
@@ -32,7 +156,6 @@ describe("index", () => {
 ((? sqr-int) 69))`).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 4761
     });
   });
@@ -40,7 +163,6 @@ describe("index", () => {
     expect(new DebugMachine("( (\\ (x) (prim:mul x 2)) 210)").
       run()).
       toStrictEqual({
-        tag: 'number',
         v: 420
       });
   });
@@ -49,7 +171,6 @@ describe("index", () => {
     expect(new DebugMachine("(let n (prim:add 1 2) (prim:mul n 2))").
       run()).
       toStrictEqual({
-        tag: 'number',
         v: 6
       });
   });
@@ -67,7 +188,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 1814400
       });
   });
@@ -81,7 +201,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 8
       });
   });
@@ -94,7 +213,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 195
       });
   });
@@ -121,7 +239,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 355687428096000
       });
   });
@@ -148,7 +265,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 911666
       });
   });
@@ -176,7 +292,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: 'number',
         v: 6
       });
   });
@@ -223,7 +338,6 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 911672
       });
   });
@@ -250,7 +364,6 @@ describe("index", () => {
     let res = machine.run();
     expect(res).
       toStrictEqual({
-        tag: "boolean",
         v: false
     });
   }
@@ -290,7 +403,6 @@ describe("index", () => {
       `).
         run()).
         toStrictEqual({
-          tag: "number",
           v: 7
         });
   });
@@ -327,7 +439,6 @@ describe("index", () => {
       `).
         run()).
         toStrictEqual({
-          tag: "number",
           v: 17
         });
   });
@@ -346,52 +457,8 @@ describe("index", () => {
     `).
       run()).
       toStrictEqual({
-        tag: "number",
         v: 1814400
       });
-  });
-
-  test("string functions: length", () => {
-    expect(new DebugMachine(`
-    (prim:string-length "bottom text")
-    `).
-      run()).
-      toStrictEqual({
-        tag: "number",
-        v: 11
-      });
-  });
-
-  test('record delete', () => {
-    expect(new DebugMachine(`
-(let o1 (prim:record-new "key1" #f "key2" #t)
-(prim:record-del "key1" o1))
-`).
-           run()).
-      toStrictEqual({
-        tag: "record",
-        v: {
-          'key2': {
-            tag: "boolean",
-            v: true
-          }
-        }
-      });
-  });
-
-
-  test('array test', () => {
-    expect(new DebugMachine(`
-(let a1 (prim:array-new 1 2 3)
-(let a2 (prim:array-new)
-(let a3 (prim:array-concat a2 a1)
-(prim:array-length a3))))
-`).
-      run()).
-      toStrictEqual({
-        tag: "number",
-        v: 3
-    });
   });
 });
 

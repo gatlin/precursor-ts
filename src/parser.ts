@@ -5,10 +5,8 @@
 import {
   Cbpv,
   cbpv_is_positive,
-  cbpv_num,
-  cbpv_bool,
+  cbpv_lit,
   cbpv_sym,
-  cbpv_str,
   cbpv_prim,
   cbpv_app,
   cbpv_let,
@@ -212,11 +210,11 @@ export const build_cbpv = (ast: any): Cbpv => {
   }
   else {
     switch (typeof ast) {
-      case 'number': return cbpv_num(<number>ast);
-      case 'boolean': return cbpv_bool(<boolean>ast);
+      case 'number': return cbpv_lit(<number>ast);
+      case 'boolean': return cbpv_lit(<boolean>ast);
       case 'string': {
         if ('"' === ast.charAt(0)) {
-          return cbpv_str(<string>ast.substr(1,ast.length-2)); }
+          return cbpv_lit(<string>ast.substr(1,ast.length-2)); }
         return cbpv_sym(<string>ast);
       }
     }

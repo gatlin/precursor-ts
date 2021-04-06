@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/index.js",
@@ -28,5 +28,8 @@
     "ts-jest": "^26.5.1",
     "ts-node": "^9.1.1",
     "typescript": "^4.1.3"
+  },
+  "dependencies": {
+    "bson": "^4.2.3"
   }
 }
