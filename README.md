@@ -161,6 +161,53 @@ const example_machine = new ExampleMachine(`
 assert.deepStrictEqual(example_machine.run(), { v: 9 });
 ```
 
+## are there data structures? a type system?
+
+Ultimately I would like to include a type checker for `Cbpv` which supports
+*linear call-by-push-value with graded coeffects.*
+I'll let you look up the parts of that which interest you.
+
+As for data structures,
+
+1. Nothing yet,
+2. look at this:
+
+```typescript
+const example_machine = new ExampleMachine(`
+(letrec (
+  (cons (λ (a b) (reset ((shift k k) a b))))
+)
+(let p1 ((? cons) 3 #f)
+p1)
+)
+`);
+console.log(example_machine.run());
+```
+
+This prints the following:
+
+```json
+{
+  "_kont": {
+    "_args": [
+      {
+        "v": 3
+      },
+      {
+        "v": false
+      }
+    ],
+    "_kont": {}
+  }
+}
+```
+
+This captured a set of arguments being passed to a "function" `(shift k k)` and
+converted them into what looks suspiciously like a composite or product value
+of some kind.
+
+Stay tuned!
+
 # questions / comments
 
 You can submit bugs through the Issues feature at
