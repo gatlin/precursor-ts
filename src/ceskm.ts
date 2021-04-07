@@ -8,16 +8,18 @@ const clone = <A>(a: A): A => JSON.parse(JSON.stringify(a));
 
 /* Continuations and Values */
 export type Kont<T>
-  = { tag: "top" }
-  | { tag: "arg", vs: Value<T>[], kont: Kont<T> }
-  | { tag: "let", sym: string, exp: Cbpv, env: Env, kont: Kont<T> } ;
-export const topk = <T>(): Kont<T> => ({ tag: 'top'});
-export const argk = <T>(vs: Value<T>[], kont: Kont<T>): Kont<T> => ({
-  tag: 'arg',
-  vs, kont });
-export const letk = <T>(sym: string, exp: Cbpv, env: Env, kont: Kont<T>): Kont<T> => ({
-  tag: 'let',
-  sym, exp, env, kont });
+  = {}
+  | { _args: Value<T>[], _kont: Kont<T> }
+  | { _let: string, _exp: Cbpv, _env: Env, _kont: Kont<T> };
+export const topk = <T>(): Kont<T> => ({});
+export const argk = <T>(_args: Value<T>[], _kont: Kont<T>): Kont<T> => ({
+  _args, _kont });
+export const letk = <T>(
+  _let: string,
+  _exp: Cbpv,
+  _env: Env,
+  _kont: Kont<T>
+): Kont<T> => ({ _let, _exp, _env, _kont });
 
 export type Value<T>
   = { _exp: Cbpv, _env: Env }
@@ -98,8 +100,7 @@ export class CESKM<Result = never> {
    * Sub-classes will need to override this method if they change the type T.
    */
   protected literal(v: any): Value<Result> {
-    return closure(cbpv_lit(v), []);
-  }
+    return closure(cbpv_lit(v), []); }
 
   /**
    * @method positive
@@ -236,25 +237,22 @@ export class CESKM<Result = never> {
           else {
             return this.continue(val, kontinuation, store, meta); }}
         case "cbpv_abstract": {
-          switch (kontinuation.tag) {
-            case "arg": {
-              let frame: Frame = {};
-              for (let i = 0; i < control.args.length; i++) {
-                let addr: string = this.gensym();
-                store[addr] = kontinuation.vs[i];
-                frame[control.args[i]] = addr; }
-              control = control.body;
-              env_push_frame(frame, environment);
-              kontinuation = kontinuation.kont;
-              return {
-                control,
-                environment,
-                store,
-                kontinuation,
-                meta }; }
-            default: throw new Error('invalid continuation for function'); }
-          finished = true;
-          break; }
+          if ("_args" in kontinuation) {
+            let frame: Frame = {};
+            for (let i = 0; i < control.args.length; i++) {
+              let addr: string = this.gensym();
+              store[addr] = kontinuation._args[i];
+              frame[control.args[i]] = addr; }
+            control = control.body;
+            env_push_frame(frame, environment);
+            kontinuation = kontinuation._kont;
+            return {
+              control,
+              environment,
+              store,
+              kontinuation,
+              meta }; }
+          throw new Error('invalid continuation for function'); }
         default: finished = true; } }
     return this.continue(
       this.positive(control, environment, store),
@@ -280,40 +278,36 @@ export class CESKM<Result = never> {
   ): Value<Result> | State<Result> {
     let finished: boolean = false;
     while (!finished) {
-      switch (kontinuation.tag) {
-        case "top": {
-          if (meta.length === 0) {
-            this.result = val; // mission accomplished
-            return val; }
-          else {
-            let k: Kont<Result> = meta.shift()!;
-            kontinuation = k; }
-          break; }
-        case "arg": {
-          let actual_val: Value<Result> = kontinuation.vs[0];
-          let next_k: Kont<Result> = kontinuation.kont;
-          meta.unshift(next_k);
-          if (! ("_kont" in val))
-            { throw new Error(`boo: ${JSON.stringify(val)}`); }
-          else
-            { kontinuation = val._kont; }
-          val = actual_val;
-          break; }
-        case "let": {
-          let { sym, env, exp, kont } = kontinuation;
-          let frame: Frame = {};
-          let addr: string = this.gensym();
-          frame[sym] = addr;
-          env_push_frame(frame, env);
-          store[addr] = val;
-          return {
-            control: kontinuation.exp,
-            environment: env,
-            store,
-            kontinuation: kontinuation.kont,
-            meta
-          };  }
-        default: finished = true; } }
+      if ("_args" in kontinuation) {
+        let { _args, _kont } = kontinuation;
+        let actual_val: Value<Result> = _args[0];
+        let next_k: Kont<Result> = _kont;
+        meta.unshift(next_k);
+        if (! ("_kont" in val))
+          { throw new Error(`boo: ${JSON.stringify(val)}`); }
+        else
+          { kontinuation = val._kont; }
+        val = actual_val; }
+      else if ("_let" in kontinuation) {
+        let { _let, _env, _exp, _kont } = kontinuation;
+        let frame: Frame = {};
+        let addr: string = this.gensym();
+        frame[_let] = addr;
+        env_push_frame(frame, _env);
+        store[addr] = val;
+        return {
+          control: _exp,
+          environment: _env,
+          store,
+          kontinuation: _kont,
+          meta }; }
+      else {
+        if (0 === meta.length) {
+          this.result = val;
+          return val; }
+        else {
+          let k: Kont<Result> = meta.shift()!;
+          kontinuation = k; } } }
     throw new Error("Invalid continuation."); }
 
   /**
