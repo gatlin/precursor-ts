@@ -22,10 +22,12 @@ npm i
 Precursor is a small programming language which you may grow and build upon (a
 "precursor," if you like).
 
+It's more of a meta-language, though: one you might use to define a more
+sophisticated one on top.
+Sort of like a precursor.
+
 The default distribution consists of 3 components which work together "out of
 the box".
-
----
 
 To be perfectly honest, I keep circling on how best to approach explaining what
 this is, if only because *I'm* deficient in my didactic abilities.
