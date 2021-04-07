@@ -4,9 +4,7 @@
 
 // Call-By-Push-Value intermediate language.
 export type Cbpv
-  = { tag: "cbpv_number" ; v: number }
-  | { tag: "cbpv_boolean" ; v: boolean }
-  | { tag: "cbpv_string" ; v: string }
+  = { tag: "cbpv_literal" ; v: any }
   | { tag: "cbpv_symbol" ; v: string }
   | { tag: "cbpv_primop" ; op: string; erands: Cbpv[] }
   | { tag: "cbpv_suspend"; exp: Cbpv }
@@ -21,9 +19,7 @@ export type Cbpv
   ;
 
 // smart constructors
-export const cbpv_num = (v: number): Cbpv => ({ tag: "cbpv_number", v });
-export const cbpv_bool = (v: boolean): Cbpv => ({ tag: "cbpv_boolean", v });
-export const cbpv_str = (v: string): Cbpv => ({ tag: "cbpv_string", v });
+export const cbpv_lit = (v: any): Cbpv => ({ tag: "cbpv_literal", v });
 export const cbpv_sym = (v: string): Cbpv => ({ tag: "cbpv_symbol", v });
 export const cbpv_prim = (op: string, erands: Cbpv[]): Cbpv => ({
   tag: "cbpv_primop",
@@ -51,8 +47,7 @@ export const cbpv_if = (c: Cbpv, t: Cbpv, e: Cbpv): Cbpv => ({
   c, t, e });
 
 export const cbpv_is_positive = (expr: Cbpv): boolean => { switch (expr.tag) {
-    case "cbpv_number":
-    case "cbpv_boolean":
+    case "cbpv_literal":
     case "cbpv_symbol":
     case "cbpv_primop":
     case "cbpv_suspend":
