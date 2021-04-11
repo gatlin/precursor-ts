@@ -31,22 +31,20 @@ export const lit = <T>(v: T): Value<T> => ({ v });
 
 /* Environment and store */
 
-export type Frame = Record<string, string | Cbpv>;
-export type Env = Frame[];
+export type Env = Record<string, string | Cbpv>;
 
 export const env_lookup = (sym: string, env: Env): string | Cbpv => {
-  for (let frame of env) {
-    if (sym in frame) {
-      return frame[sym]; } }
-  throw new Error(`Unbound symbol: ${sym}`); };
+  if (sym in env) {
+    return env[sym];
+  }
+  throw new Error(`Unbound symbol: ${sym}`);
+}
 
-export const env_push_frame = (frame: Frame, env: Env): Env => {
-  env.unshift(frame);
-  return env; };
+export const env_push_frame = (frame: Env, env: Env): Env => {
+  return { ...env, ...frame };
+};
 
-export const env_pop_frame = (env: Env): Frame => {
-  let frame: Frame = env.shift()!;
-  return frame; };
+export const env_empty = (): Env => ({});
 
 export type Store<T> = Record<string,Value<T>>;
 
@@ -70,7 +68,7 @@ export class CESKM<Base = never> {
   protected make_initial_state(): State<Base> {
     return {
       control: this.control,
-      environment: [],
+      environment: {},
       store: {},
       kontinuation: topk(),
       meta: [] }; }
@@ -100,7 +98,7 @@ export class CESKM<Base = never> {
    * Sub-classes will need to override this method if they change the type T.
    */
   protected literal(v: any): Value<Base> {
-    return closure(cbpv_lit(v), []); }
+    return closure(cbpv_lit(v), env_empty()); }
 
   /**
    * @method positive
@@ -172,18 +170,18 @@ export class CESKM<Base = never> {
           kontinuation = letk(v, body, environment, kontinuation );
           break; }
         case "cbpv_letrec": {
-          let frame: Frame = {};
+          let frame: Env = {};
           for (let binding of control.bindings)
             { frame[binding[0] as string] = binding[1] as Cbpv; }
           control = control.body;
-          env_push_frame(frame, environment);
+          environment = env_push_frame(frame, environment);
           break; }
         case "cbpv_shift": {
           let addr: string = this.gensym();
           let cc: Kont<Base> = kontinuation;
-          let frame: Frame = {};
+          let frame: Env = {};
           frame[control.karg] = addr;
-          env_push_frame(frame, environment);
+          environment = env_push_frame(frame, environment);
           control = control.body;
           store[addr] = continuation(cc);
           kontinuation = topk();
@@ -213,13 +211,13 @@ export class CESKM<Base = never> {
             return this.continue(val, kontinuation, store, meta); }}
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
-            let frame: Frame = {};
+            let frame: Env = {};
             for (let i = 0; i < control.args.length; i++) {
               let addr: string = this.gensym();
               store[addr] = kontinuation._args[i];
               frame[control.args[i]] = addr; }
             control = control.body;
-            env_push_frame(frame, environment);
+            environment = env_push_frame(frame, environment);
             kontinuation = kontinuation._kont;
             return { control, environment, store, kontinuation, meta }; }
           throw new Error('invalid continuation for function'); }
@@ -260,10 +258,10 @@ export class CESKM<Base = never> {
         val = actual_val; }
       else if ("_let" in kontinuation) {
         let { _let, _env, _exp, _kont } = kontinuation;
-        let frame: Frame = {};
+        let frame: Env = {};
         let addr: string = this.gensym();
         frame[_let] = addr;
-        env_push_frame(frame, _env);
+        _env = env_push_frame(frame, _env);
         store[addr] = val;
         return {
           control: _exp,
