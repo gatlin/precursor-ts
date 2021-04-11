@@ -134,8 +134,8 @@ export class CESKM<Base = never> {
           else {
             expr = cexp;
             break;}}
-        case "cbpv_primop": {
-          return this.primop(
+        case "cbpv_op": {
+          return this.op(
             expr.op,
             expr.erands.map(
               (erand: Cbpv) => this.positive(erand, env, store))); }
@@ -281,16 +281,16 @@ export class CESKM<Base = never> {
     throw new Error("Invalid continuation."); }
 
   /**
-   * @method primop
+   * @method op
    * @param {string} op_sym the symbol for the primitive operator.
    * @param {Array<Value<Base>>} args the values passed to the operator.
    * @returns {Value<Base>}
    * @remarks This method is protected expressly so that sub-classes may define
-   * custom primitive operators (indeed that is a primary motivation for
+   * custom operators (indeed that is a primary motivation for
    * sub-classes). Those provided here are chosen because in all likelihood
    * sub-classes will still find them useful.
    */
-  protected primop(op_sym: string, args: Value<Base>[]): Value<Base> {
+  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
     let s = "";
     for (let arg of args) { s += ` ${ "v" in arg ? typeof arg.v :  "unknown" }`; }
-    throw new Error(`bad prim op or arguments: ${op_sym} - ${s}`); }}
+    throw new Error(`bad op or arguments: ${op_sym} - ${s}`); }}

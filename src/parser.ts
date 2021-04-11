@@ -7,7 +7,7 @@ import {
   cbpv_is_positive,
   cbpv_lit,
   cbpv_sym,
-  cbpv_prim,
+  cbpv_op,
   cbpv_app,
   cbpv_let,
   cbpv_letrec,
@@ -193,8 +193,8 @@ export const build_cbpv = (ast: any): Cbpv => {
         );
       }
       default: {
-        if ('string' === typeof ast[0] && ast[0].startsWith('prim:')) {
-          return cbpv_prim(
+        if ('string' === typeof ast[0] && ast[0].startsWith('op:')) {
+          return cbpv_op(
             ast[0],
             ast.slice(1).map(build_cbpv)
           );

@@ -15,9 +15,9 @@ class DebugMachine<Val> extends CESKM<Val> {
       { return { v }; }
     throw new Error(`${v} not a primitive value`);
   }
-  protected primop(op_sym: string, args: Value<Val>[]): Value<Val> {
+  protected op(op_sym: string, args: Value<Val>[]): Value<Val> {
     switch (op_sym) {
-      case "prim:mul": {
+      case "op:mul": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
           { throw new Error(`arguments must be values`); }
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
@@ -25,7 +25,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v * args[1].v;
         return { v: result as Val };
       }
-      case "prim:add": {
+      case "op:add": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
           { throw new Error(`arguments must be values`); }
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
@@ -33,7 +33,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v + args[1].v;
         return { v: result as Val };
       }
-      case "prim:sub": {
+      case "op:sub": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
           { throw new Error(`arguments must be values`); }
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
@@ -41,7 +41,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v - args[1].v;
         return { v: result as Val };
       }
-      case "prim:div": {
+      case "op:div": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -51,7 +51,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v / args[1].v;
         return { v: result as Val };
       }
-      case "prim:mod": {
+      case "op:mod": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -61,7 +61,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v % args[1].v;
         return { v: result as Val };
       }
-      case "prim:eq": {
+      case "op:eq": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -72,7 +72,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v === args[1].v;
         return { v: result as Val };
       }
-      case "prim:lt": {
+      case "op:lt": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -82,7 +82,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v < args[1].v;
         return { v: result as Val };
       }
-      case "prim:lte": {
+      case "op:lte": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -92,7 +92,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v <= args[1].v;
         return { v: result as Val };
       }
-      case "prim:gt": {
+      case "op:gt": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -102,7 +102,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v > args[1].v;
         return { v: result as Val };
       }
-      case "prim:gte": {
+      case "op:gte": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -112,7 +112,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v >= args[1].v;
         return { v: result as Val };
       }
-      case "prim:and": {
+      case "op:and": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -122,7 +122,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v && args[1].v;
         return { v: result as Val };
       }
-      case "prim:or": {
+      case "op:or": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
           throw new Error(`arguments must be values`);
         }
@@ -132,7 +132,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = args[0].v || args[1].v;
         return { v: result as Val };
       }
-      case "prim:not": {
+      case "op:not": {
         if (! ("v" in args[0]) ) {
           throw new Error(`argument must be a value`);
         }
@@ -142,7 +142,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         let result: unknown = !args[0].v;
         return { v: result as Val };
       }
-      default: return super.primop(op_sym, args);
+      default: return super.op(op_sym, args);
     }
   }
 }
@@ -151,7 +151,7 @@ describe("index", () => {
   test('scenario check 1', () => {
     expect(new DebugMachine(`
 (letrec (
-  (sqr-int (λ (n) (prim:mul n n)))
+  (sqr-int (λ (n) (op:mul n n)))
 )
 ((? sqr-int) 69))`).
       run()).
@@ -160,7 +160,7 @@ describe("index", () => {
     });
   });
   test("scenario check 2", () => {
-    expect(new DebugMachine("( (\\ (x) (prim:mul x 2)) 210)").
+    expect(new DebugMachine("( (\\ (x) (op:mul x 2)) 210)").
       run()).
       toStrictEqual({
         v: 420
@@ -168,7 +168,7 @@ describe("index", () => {
   });
 
   test("scenario check 3", () => {
-    expect(new DebugMachine("(let n (prim:add 1 2) (prim:mul n 2))").
+    expect(new DebugMachine("(let n (op:add 1 2) (op:mul n 2))").
       run()).
       toStrictEqual({
         v: 6
@@ -179,9 +179,9 @@ describe("index", () => {
     expect(new DebugMachine(`
 (letrec (
   (fact-tailrec (λ (n total)
-    (if (prim:eq n 2)
+    (if (op:eq n 2)
       total
-      ((? fact-tailrec) (prim:sub n 1) (prim:mul n total)))))
+      ((? fact-tailrec) (op:sub n 1) (op:mul n total)))))
 )
 ((? fact-tailrec) 10 1)
 )
@@ -195,7 +195,7 @@ describe("index", () => {
   test("scenario check 5", () => {
     expect(new DebugMachine(`
 (letrec (
-  (times (λ (a b) (prim:mul a b)))
+  (times (λ (a b) (op:mul a b)))
 )
 ((? times) 2 4))
     `).
@@ -208,8 +208,8 @@ describe("index", () => {
   test("scenario check 6", () => {
     expect(new DebugMachine(`
 (let f (reset (shift k k))
-(let n (f (prim:add 10 55))
-(prim:mul 3 n)))
+(let n (f (op:add 10 55))
+(op:mul 3 n)))
     `).
       run()).
       toStrictEqual({
@@ -224,14 +224,14 @@ describe("index", () => {
       (let four-then-eight (shift times-2
         (let eight (times-2 4)
         (times-2 eight)))
-      (prim:mul 2 four-then-eight)))
-    (prim:add sixteen 1))))
+      (op:mul 2 four-then-eight)))
+    (op:add sixteen 1))))
   (fact (λ (n) (letrec (
     (help (λ (n total)
       (let n (? n)
-      (if (prim:lt n 2)
+      (if (op:lt n 2)
         total
-        ((? help) (prim:sub n 1) (prim:mul n total)))))))
+        ((? help) (op:sub n 1) (op:mul n total)))))))
     ((? help) n 1))))
 )
 ((? fact) (! ((? seventeen))))
@@ -248,11 +248,11 @@ describe("index", () => {
   (make-reducer (λ (initial-value) (letrec (
     (loop (λ (total first-run) (reset
       (let n (shift k k)
-      (if (prim:and
-            (prim:eq n 0)
-            (prim:not first-run))
+      (if (op:and
+            (op:eq n 0)
+            (op:not first-run))
         total
-        ((? loop) (prim:add n total) #f  ))))))
+        ((? loop) (op:add n total) #f  ))))))
     )
     ((? loop) initial-value #t)
   )))
@@ -287,7 +287,7 @@ describe("index", () => {
 (let n2 ((? peek) gen)
 (let gen ((? next) gen)
 (let n3 ((? peek) gen)
-(prim:add (prim:add n1 n2) n3)))))))
+(op:add (op:add n1 n2) n3)))))))
 )
     `).
       run()).
@@ -310,11 +310,11 @@ describe("index", () => {
     (loop (λ (total first-run) (reset
       (let n (shift k k)
       (let n (? n)
-      (if (prim:and
-            (prim:eq n 0)
-            (prim:not first-run))
+      (if (op:and
+            (op:eq n 0)
+            (op:not first-run))
         total
-        ((? loop) (prim:add n total) #f  )))))))
+        ((? loop) (op:add n total) #f  )))))))
     )
     ((? loop) initial-value #t)
   )))
@@ -333,7 +333,7 @@ describe("index", () => {
 (let n2 ((? peek) gen)
 (let gen ((? next) gen)
 (let n3 ((? peek) gen)
-(prim:add (prim:add n1 n2) (prim:add n3 n))))))))))))
+(op:add (op:add n1 n2) (op:add n3 n))))))))))))
 )
     `).
       run()).
@@ -352,7 +352,7 @@ describe("index", () => {
     ((? p) (! (\\ (a b) b)))))
   (is-even (\\ (n)
     (let n (? n)
-    (prim:eq 0 (prim:mod n 2)))))
+    (op:eq 0 (op:mod n 2)))))
 )
 (let p1 ((? pair) 3 is-even)
 (let num ((? pair-fst) p1)
@@ -396,7 +396,7 @@ describe("index", () => {
     (! (λ (a b)
       (let a (? a)
       (let b (? b)
-      (prim:add a b)))))
+      (op:add a b)))))
     7
     list-1 ))
 )
@@ -432,7 +432,7 @@ describe("index", () => {
     (! (λ (a b)
       (let a (? a)
       (let b (? b)
-      (prim:add a b)))))
+      (op:add a b)))))
     7
     list-1 ))
 )
@@ -448,9 +448,9 @@ describe("index", () => {
 (letrec ( ; comment 1
   (fact-tailrec (λ (n total)
 ;comment 2
-    (if (prim:eq n 2)
+    (if (op:eq n 2)
       total ; comment 3
-      ((? fact-tailrec) (prim:sub n 1) (prim:mul n total)))))
+      ((? fact-tailrec) (op:sub n 1) (op:mul n total)))))
 )
 ((? fact-tailrec) 10 1) ;; comment 4
 )
