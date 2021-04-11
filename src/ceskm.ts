@@ -6,6 +6,19 @@ import { Cbpv, cbpv_lit , cbpv_is_positive } from './grammar';
 
 const clone = <A>(a: A): A => JSON.parse(JSON.stringify(a));
 
+/* Environment */
+export type Env = { [name:string]: string | Cbpv };
+
+export const env_lookup = (sym: string, env: Env): string | Cbpv => {
+  if (sym in env) {
+    return env[sym]; }
+  throw new Error(`Unbound symbol: ${sym}`); }
+
+export const env_push_frame = (frame: Env, env: Env): Env => {
+  return { ...env, ...frame }; };
+
+export const env_empty = (): Env => ({});
+
 /* Continuations and Values */
 export type Kont<T>
   = {}
@@ -29,24 +42,9 @@ export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({ _exp, _env });
 export const continuation = <T>(_kont: Kont<T>): Value<T> => ({ _kont });
 export const lit = <T>(v: T): Value<T> => ({ v });
 
-/* Environment and store */
+/* Finally, the store */
 
-export type Env = Record<string, string | Cbpv>;
-
-export const env_lookup = (sym: string, env: Env): string | Cbpv => {
-  if (sym in env) {
-    return env[sym];
-  }
-  throw new Error(`Unbound symbol: ${sym}`);
-}
-
-export const env_push_frame = (frame: Env, env: Env): Env => {
-  return { ...env, ...frame };
-};
-
-export const env_empty = (): Env => ({});
-
-export type Store<T> = Record<string,Value<T>>;
+export type Store<T> = { [addr: string]: Value<T> };
 
 export type State<T> = {
   control: Cbpv;
