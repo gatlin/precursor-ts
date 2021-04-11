@@ -9,16 +9,6 @@ const clone = <A>(a: A): A => JSON.parse(JSON.stringify(a));
 /* Environment */
 export type Env = { [name:string]: string | Cbpv };
 
-export const env_lookup = (sym: string, env: Env): string | Cbpv => {
-  if (sym in env) {
-    return env[sym]; }
-  throw new Error(`Unbound symbol: ${sym}`); }
-
-export const env_push_frame = (frame: Env, env: Env): Env => {
-  return { ...env, ...frame }; };
-
-export const env_empty = (): Env => ({});
-
 /* Continuations and Values */
 export type Kont<T>
   = {}
@@ -96,7 +86,19 @@ export class CESKM<Base = never> {
    * Sub-classes will need to override this method if they change the type T.
    */
   protected literal(v: any): Value<Base> {
-    return closure(cbpv_lit(v), env_empty()); }
+    return closure(cbpv_lit(v), this.env_empty()); }
+
+  protected env_lookup (sym: string, env: Env): string | Cbpv {
+    if (sym in env) {
+      return env[sym]; }
+    throw new Error(`Unbound symbol: ${sym}`); }
+
+  protected env_push (frame: Env, env: Env): Env {
+    return { ...env, ...frame }; };
+
+  protected env_empty (): Env {
+    return {};
+  }
 
   /**
    * @method positive
@@ -118,7 +120,7 @@ export class CESKM<Base = never> {
             { return continuation(topk()); }
           else {
             let addr_or_val: string | Cbpv =
-              env_lookup(expr.v, env);
+              this.env_lookup(expr.v, env);
             return ("string" === typeof addr_or_val)
               ? store[addr_or_val as string]
               : closure(addr_or_val as Cbpv, env); }
@@ -172,14 +174,14 @@ export class CESKM<Base = never> {
           for (let binding of control.bindings)
             { frame[binding[0] as string] = binding[1] as Cbpv; }
           control = control.body;
-          environment = env_push_frame(frame, environment);
+          environment = this.env_push(frame, environment);
           break; }
         case "cbpv_shift": {
           let addr: string = this.gensym();
           let cc: Kont<Base> = kontinuation;
           let frame: Env = {};
           frame[control.karg] = addr;
-          environment = env_push_frame(frame, environment);
+          environment = this.env_push(frame, environment);
           control = control.body;
           store[addr] = continuation(cc);
           kontinuation = topk();
@@ -215,7 +217,7 @@ export class CESKM<Base = never> {
               store[addr] = kontinuation._args[i];
               frame[control.args[i]] = addr; }
             control = control.body;
-            environment = env_push_frame(frame, environment);
+            environment = this.env_push(frame, environment);
             kontinuation = kontinuation._kont;
             return { control, environment, store, kontinuation, meta }; }
           throw new Error('invalid continuation for function'); }
@@ -259,7 +261,7 @@ export class CESKM<Base = never> {
         let frame: Env = {};
         let addr: string = this.gensym();
         frame[_let] = addr;
-        _env = env_push_frame(frame, _env);
+        _env = this.env_push(frame, _env);
         store[addr] = val;
         return {
           control: _exp,
