@@ -41,8 +41,7 @@ export type State<T> = {
   environment: Env;
   store: Store<T>;
   kontinuation: Kont<T>;
-  meta: Kont<T>[];
-};
+  meta: Kont<T>[]; };
 
 /* The CESKM virtual machine */
 export class CESKM<Base = never> {
@@ -97,8 +96,7 @@ export class CESKM<Base = never> {
     return { ...env, ...frame }; };
 
   protected env_empty (): Env {
-    return {};
-  }
+    return {}; }
 
   /**
    * @method positive
