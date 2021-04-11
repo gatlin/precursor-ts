@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.2.1",
+  "version": "0.2.1-dev",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/index.js",
