@@ -66,7 +66,7 @@ class ExampleMachine<Val> extends CESKM<Val> {
   constructor (program: string) { super(parse_cbpv(program)); }
 ```
 
-Now we must override the methods `literal` and `primop`.
+Now we must override the methods `literal` and `op`.
 
 `literal` defines how "literal" values are to be converted into `Value`s.
 A literal is something like a number (eg, `42`), `"doubly quoted string"`, or
@@ -83,22 +83,22 @@ You decide which of these to accept and how to evaluate them literally.
   }
 ```
 
-`primop` defines the *primitive operations* ("primops") your machine can
-perform on `Value`s.
-The `CESKM` base class defines no primops: by default, the machine can only
-"do" what you permit it to do.
+`op` defines the *primitive operations* ("ops") your machine can perform on
+`Value`s.
+The `CESKM` base class defines no ops: by default, the machine can only "do"
+what you permit it to do.
 
 *Aside*: The built-in parser, by convention, treats all symbols beginning with
-`prim:` as primitive operators, eg:
+`op:` as primitive operators, eg:
 
 ```
-(prim:mul 1 2)
+(op:mul 1 2)
 
     =>
 
 {
-  "tag": "cbpv_primop",
-  "op": "prim:mul",
+  "tag": "cbpv_op",
+  "op": "op:mul",
   "erands": [
     {
       "tag": "cbpv_literal",
@@ -116,9 +116,9 @@ There is no brilliant reason for this, it just keeps the interaction between
 the parser and the evaluator simple in lieu of a more principled mechanism.
 
 ```typescript
-  protected primop(op_sym: string, args: Value<Val>[]): Value<Val> {
+  protected op(op_sym: string, args: Value<Val>[]): Value<Val> {
     switch (op_sym) {
-      case "prim:mul": {
+      case "op:mul": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
           { throw new Error(`arguments must be values`); }
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
@@ -126,17 +126,17 @@ the parser and the evaluator simple in lieu of a more principled mechanism.
         let result: unknown = args[0].v * args[1].v;
         return { v: result as Val };
       }
-      // ... other prim ops
-      default: return super.primop(op_sym, args);
+      // ... other ops
+      default: return super.op(op_sym, args);
     }
   }
 }
 ```
 
-Primitive operators are not complete terms by themselves - they aren't
-variables you can pass around as an argument.
+Operators are not complete terms by themselves - they aren't variables you can
+pass around as an argument.
 Think of them as the "assembly" instructions of your evaluator.
-You can write functions that call primops and pass *those* around all day.
+You can write functions that call ops and pass *those* around all day.
 
 ---
 
@@ -148,9 +148,9 @@ literal expressions and what primitive operators are defined for them, you can
 const example_machine = new ExampleMachine(`
 (letrec (
   (square (λ (n)
-    (let n (? n)      ; prim-op arguments must be *fully* evaluated.
-    (prim:mul n n)))) ; higher level languages might not expose primops
-)                     ; directly.
+    (let n (? n)      ; op arguments must be *fully* evaluated.
+    (op:mul n n))))   ; higher level languages might not expose ops directly.
+)
 
 ((? square) 3) ; a function defined in a `letrec` is automatically
                ; "suspended" and must be "resumed" with `?` before
