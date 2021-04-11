@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.3.0",
+  "version": "0.3.1-dev",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/index.js",
@@ -9,9 +9,10 @@
   "license": "GPL-3",
   "scripts": {
     "build": "tsc",
-    "test": "jest",
     "coverage": "jest --coverage",
-    "prepare": "npm run test && npm run build"
+    "lint": "eslint . --fix --ext .ts",
+    "prepare": "npm run test && npm run build",
+    "test": "jest"
   },
   "jest": {
     "preset": "ts-jest",
@@ -23,6 +24,9 @@
   "devDependencies": {
     "@types/jest": "^26.0.20",
     "@types/node": "^14.14.13",
+    "@typescript-eslint/eslint-plugin": "^4.21.0",
+    "@typescript-eslint/parser": "^4.21.0",
+    "eslint": "^7.24.0",
     "jest": "^26.6.3",
     "ts-jest": "^26.5.1",
     "ts-node": "^9.1.1",
