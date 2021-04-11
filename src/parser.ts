@@ -28,14 +28,14 @@ import {
  * [1]: https://gist.github.com/DmitrySoshnikov/2a434dda67019a4a7c37
  */
 export class Parser {
-  protected cursor: number = 0;
+  protected cursor = 0;
   protected ast: any[] = [];
   constructor(
     protected expression: string
   ) {}
 
   public parse(): any {
-    let ast = this.parse_expression();
+    const ast = this.parse_expression();
     return ast;
   }
 
@@ -79,7 +79,7 @@ export class Parser {
   }
 
   protected parse_string(): string {
-    let start = this.cursor;
+    const start = this.cursor;
     let finished = false;
     while (!finished) {
       if ('"' === this.expression[this.cursor]) {
@@ -87,8 +87,8 @@ export class Parser {
       }
       this.cursor++;
     }
-    let str_body = this.expression.slice(start, this.cursor-1);
-    return `"${str_body}"`; };
+    const str_body = this.expression.slice(start, this.cursor-1);
+    return `"${str_body}"`; }
 
   protected parse_atom(): any {
     const terminator = /\s+|\)/;
@@ -106,7 +106,7 @@ export class Parser {
       atom = Number(<number>atom);
     }
     else if ('' !== atom && '#' === atom.charAt(0)) {
-      let b: string = atom.charAt(1);
+      const b: string = atom.charAt(1);
       if ('t' === b) { atom = true; }
       else if ('f' === b) { atom = false; }
       else { throw new Error('boolean is either #t or #f'); }
@@ -150,7 +150,7 @@ export const build_cbpv = (ast: any): Cbpv => {
         if (!Array.isArray(ast[1])) {
           throw new Error('arguments must be in a list');
         }
-        for (let arg of ast[1]) {
+        for (const arg of ast[1]) {
           if ('string' !== typeof arg) {
             throw new Error('function argument must be a symbol');
           }
@@ -171,7 +171,7 @@ export const build_cbpv = (ast: any): Cbpv => {
         if (!Array.isArray(ast[1])) {
           throw new Error('letrec bindings must be a list');
         }
-        let bindings: Array<[any,any]> = ast[1].map((binding: [string,any]) => {
+        const bindings: Array<[any,any]> = ast[1].map((binding: [string,any]) => {
           return [binding[0], build_cbpv(binding[1])];
         });
         return cbpv_letrec(bindings, build_cbpv(ast[2]));

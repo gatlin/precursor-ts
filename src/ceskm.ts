@@ -11,7 +11,7 @@ export type Env = { [name:string]: string | Cbpv };
 
 /* Continuations and Values */
 export type Kont<T>
-  = {}
+  = Record<string,never>
   | { _args: Value<T>[], _kont: Kont<T> }
   | { _let: string, _exp: Cbpv, _env: Env, _kont: Kont<T> };
 export const topk = <T>(): Kont<T> => ({});
@@ -46,7 +46,7 @@ export type State<T> = {
 /* The CESKM virtual machine */
 export class CESKM<Base = never> {
   protected result: Value<Base> | null = null;
-  protected gensym_count: number = 0;
+  protected gensym_count = 0;
 
   constructor (
     protected readonly control: Cbpv
@@ -67,7 +67,7 @@ export class CESKM<Base = never> {
   public run(): Value<Base> {
     let st: State<Base> = this.make_initial_state();
     while (!this.result) {
-      let res = this.step(clone(st));
+      const res = this.step(clone(st));
       if (!this.result) {
         st = <State<Base>>res; }}
     return this.result; }
@@ -93,7 +93,7 @@ export class CESKM<Base = never> {
     throw new Error(`Unbound symbol: ${sym}`); }
 
   protected env_push (frame: Env, env: Env): Env {
-    return { ...env, ...frame }; };
+    return { ...env, ...frame }; }
 
   protected env_empty (): Env {
     return {}; }
@@ -109,7 +109,7 @@ export class CESKM<Base = never> {
    * evaluated in one call.
    */
   private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
-    let finished: boolean = false;
+    let finished = false;
     while (!finished) {
       switch (expr.tag) {
         case "cbpv_literal": return this.literal(expr.v);
@@ -117,14 +117,14 @@ export class CESKM<Base = never> {
           if ("_" === expr.v)
             { return continuation(topk()); }
           else {
-            let addr_or_val: string | Cbpv =
+            const addr_or_val: string | Cbpv =
               this.env_lookup(expr.v, env);
             return ("string" === typeof addr_or_val)
               ? store[addr_or_val as string]
               : closure(addr_or_val as Cbpv, env); }
           break; }
         case "cbpv_suspend": {
-          let { exp: cexp } = expr;
+          const { exp: cexp } = expr;
           if (!cbpv_is_positive(cexp)) {
             return closure(cexp, env); }
           else {
@@ -151,33 +151,34 @@ export class CESKM<Base = never> {
    * inputs.
    */
   protected step(state: State<Base>): Value<Base> | State<Base> {
-    let finished: boolean = false;
-    let { control, environment, store, kontinuation, meta } = state;
+    let finished = false;
+    let { control, environment, kontinuation } = state;
+    const { store, meta } = state;
 
     while (!finished) {
       switch (control.tag) {
         case "cbpv_apply": {
-          let vals = control.erands.map(
+          const vals = control.erands.map(
             (erand: Cbpv) => this.positive(erand, environment, store));
           control = control.op;
           kontinuation = argk(vals, kontinuation);
           break; }
         case "cbpv_let": {
-          let { v, exp, body } = control;
+          const { v, exp, body } = control;
           control = exp;
           kontinuation = letk(v, body, environment, kontinuation );
           break; }
         case "cbpv_letrec": {
-          let frame: Env = {};
-          for (let binding of control.bindings)
+          const frame: Env = {};
+          for (const binding of control.bindings)
             { frame[binding[0] as string] = binding[1] as Cbpv; }
           control = control.body;
           environment = this.env_push(frame, environment);
           break; }
         case "cbpv_shift": {
-          let addr: string = this.gensym();
-          let cc: Kont<Base> = kontinuation;
-          let frame: Env = {};
+          const addr: string = this.gensym();
+          const cc: Kont<Base> = kontinuation;
+          const frame: Env = {};
           frame[control.karg] = addr;
           environment = this.env_push(frame, environment);
           control = control.body;
@@ -185,13 +186,13 @@ export class CESKM<Base = never> {
           kontinuation = topk();
           return { control, environment, store, kontinuation, meta }; }
         case "cbpv_reset": {
-          let cc: Kont<Base> = kontinuation;
+          const cc: Kont<Base> = kontinuation;
           control = control.exp;
           kontinuation = topk();
           meta.unshift(cc);
           return { control, environment, store, kontinuation, meta }; }
         case "cbpv_if": {
-          let cv = this.positive(control.c, environment, store);
+          const cv = this.positive(control.c, environment, store);
           if (! ("v" in cv))
             { throw new Error("`if` conditional must be a value"); }
           if ("boolean" !== typeof cv.v)
@@ -199,7 +200,7 @@ export class CESKM<Base = never> {
           control = cv.v ? control.t : control.e;
           return { control, environment, store, kontinuation, meta }; }
         case "cbpv_resume": {
-          let val = this.positive(control.v, environment, store);
+          const val = this.positive(control.v, environment, store);
           if ("_exp" in val) {
             control = val._exp;
             environment = val._env;
@@ -209,9 +210,9 @@ export class CESKM<Base = never> {
             return this.continue(val, kontinuation, store, meta); }}
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
-            let frame: Env = {};
+            const frame: Env = {};
             for (let i = 0; i < control.args.length; i++) {
-              let addr: string = this.gensym();
+              const addr: string = this.gensym();
               store[addr] = kontinuation._args[i];
               frame[control.args[i]] = addr; }
             control = control.body;
@@ -242,12 +243,12 @@ export class CESKM<Base = never> {
     store: Store<Base>,
     meta: Kont<Base>[]
   ): Value<Base> | State<Base> {
-    let finished: boolean = false;
+    const finished = false;
     while (!finished) {
       if ("_args" in kontinuation) {
-        let { _args, _kont } = kontinuation;
-        let actual_val: Value<Base> = _args[0];
-        let next_k: Kont<Base> = _kont;
+        const { _args, _kont } = kontinuation;
+        const actual_val: Value<Base> = _args[0];
+        const next_k: Kont<Base> = _kont;
         meta.unshift(next_k);
         if (! ("_kont" in val))
           { throw new Error(`expected continuation: ${JSON.stringify(val)}`); }
@@ -255,9 +256,10 @@ export class CESKM<Base = never> {
           { kontinuation = val._kont; }
         val = actual_val; }
       else if ("_let" in kontinuation) {
-        let { _let, _env, _exp, _kont } = kontinuation;
-        let frame: Env = {};
-        let addr: string = this.gensym();
+        const { _let, _exp, _kont } = kontinuation;
+        let { _env } = kontinuation;
+        const frame: Env = {};
+        const addr: string = this.gensym();
         frame[_let] = addr;
         _env = this.env_push(frame, _env);
         store[addr] = val;
@@ -272,7 +274,7 @@ export class CESKM<Base = never> {
           this.result = val;
           return val; }
         else {
-          let k: Kont<Base> = meta.shift()!;
+          const k: Kont<Base> = meta.shift()!;
           kontinuation = k; } } }
     throw new Error("Invalid continuation."); }
 
@@ -288,5 +290,5 @@ export class CESKM<Base = never> {
    */
   protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
     let s = "";
-    for (let arg of args) { s += ` ${ "v" in arg ? typeof arg.v :  "unknown" }`; }
+    for (const arg of args) { s += ` ${ "v" in arg ? typeof arg.v :  "unknown" }`; }
     throw new Error(`bad op or arguments: ${op_sym} - ${s}`); }}
