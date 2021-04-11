@@ -84,7 +84,7 @@ export class CESKM<Base = never> {
    * @returns { Value<Base> } A value representation of the syntactic literal.
    * Sub-classes will need to override this method if they change the type T.
    */
-  protected literal(v: any): Value<Base> {
+  protected literal(v: Base): Value<Base> {
     return closure(cbpv_lit(v), this.env_empty()); }
 
   protected env_lookup (sym: string, env: Env): string | Cbpv {
@@ -274,7 +274,7 @@ export class CESKM<Base = never> {
           this.result = val;
           return val; }
         else {
-          const k: Kont<Base> = meta.shift()!;
+          const k: Kont<Base> = meta.shift() || topk();
           kontinuation = k; } } }
     throw new Error("Invalid continuation."); }
 

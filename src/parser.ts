@@ -1,10 +1,10 @@
+/* eslint-disable */
 /**
  * @module parser
  */
 
 import {
   Cbpv,
-  cbpv_is_positive,
   cbpv_lit,
   cbpv_sym,
   cbpv_op,

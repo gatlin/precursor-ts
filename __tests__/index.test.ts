@@ -4,11 +4,12 @@ import {
   parse_cbpv
 } from "../src/index";
 
-declare type Val = number | boolean | null ;
+// eslint-disable-next-line
+type Val = number | boolean | null ;
 
 class DebugMachine<Val> extends CESKM<Val> {
   constructor (program: string) { super(parse_cbpv(program)); }
-  protected literal(v: any): Value<Val> {
+  protected literal(v: Val): Value<Val> {
     if ("number" === typeof v
      || "boolean" === typeof v
      || null === v)
