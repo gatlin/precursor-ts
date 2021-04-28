@@ -4,8 +4,6 @@
 
 import { Cbpv, cbpv_lit , cbpv_is_positive } from './grammar';
 
-const clone = <A>(a: A): A => JSON.parse(JSON.stringify(a));
-
 /* Environment */
 export type Env = { [name:string]: string | Cbpv };
 
@@ -44,7 +42,7 @@ export type State<T> = {
   meta: Kont<T>[]; };
 
 /* The CESKM virtual machine */
-export class CESKM<Base = never> {
+export class CESKM<Base = null | boolean> {
   protected result: Value<Base> | null = null;
   protected gensym_count = 0;
 
@@ -55,7 +53,7 @@ export class CESKM<Base = never> {
   protected make_initial_state(): State<Base> {
     return {
       control: this.control,
-      environment: {},
+      environment: this.env_empty(),
       store: {},
       kontinuation: topk(),
       meta: [] }; }
@@ -67,7 +65,7 @@ export class CESKM<Base = never> {
   public run(): Value<Base> {
     let st: State<Base> = this.make_initial_state();
     while (!this.result) {
-      const res = this.step(clone(st));
+      const res = this.step(JSON.parse(JSON.stringify((st))));
       if (!this.result) {
         st = <State<Base>>res; }}
     return this.result; }
@@ -98,6 +96,17 @@ export class CESKM<Base = never> {
   protected env_empty (): Env {
     return {}; }
 
+  protected store_bind (sto: Store<Base>, addr: string, value: Value<Base>): Store<Base> {
+    sto[addr] = value;
+    return sto; }
+
+  protected store_lookup (sto: Store<Base>, addr: string): Value<Base> {
+    let result: Value<Base> = sto[addr];
+    return result; }
+
+  protected store_empty (): Store<Base> {
+    return {}; }
+
   /**
    * @method positive
    * @param { Cbpv } expr The positive expression we are evaluating.
@@ -120,7 +129,7 @@ export class CESKM<Base = never> {
             const addr_or_val: string | Cbpv =
               this.env_lookup(expr.v, env);
             return ("string" === typeof addr_or_val)
-              ? store[addr_or_val as string]
+              ? this.store_lookup(store, addr_or_val as string)
               : closure(addr_or_val as Cbpv, env); }
           break; }
         case "cbpv_suspend": {
@@ -152,8 +161,8 @@ export class CESKM<Base = never> {
    */
   protected step(state: State<Base>): Value<Base> | State<Base> {
     let finished = false;
-    let { control, environment, kontinuation } = state;
-    const { store, meta } = state;
+    let { control, environment, store, kontinuation } = state;
+    const { meta } = state;
 
     while (!finished) {
       switch (control.tag) {
@@ -169,7 +178,7 @@ export class CESKM<Base = never> {
           kontinuation = letk(v, body, environment, kontinuation );
           break; }
         case "cbpv_letrec": {
-          const frame: Env = {};
+          const frame: Env = this.env_empty();
           for (const binding of control.bindings)
             { frame[binding[0] as string] = binding[1] as Cbpv; }
           control = control.body;
@@ -178,11 +187,11 @@ export class CESKM<Base = never> {
         case "cbpv_shift": {
           const addr: string = this.gensym();
           const cc: Kont<Base> = kontinuation;
-          const frame: Env = {};
+          const frame: Env = this.env_empty();
           frame[control.karg] = addr;
           environment = this.env_push(frame, environment);
           control = control.body;
-          store[addr] = continuation(cc);
+          store = this.store_bind(store, addr, continuation(cc));
           kontinuation = topk();
           return { control, environment, store, kontinuation, meta }; }
         case "cbpv_reset": {
@@ -210,10 +219,10 @@ export class CESKM<Base = never> {
             return this.continue(val, kontinuation, store, meta); }}
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
-            const frame: Env = {};
+            const frame: Env = this.env_empty();
             for (let i = 0; i < control.args.length; i++) {
               const addr: string = this.gensym();
-              store[addr] = kontinuation._args[i];
+              store = this.store_bind(store, addr, kontinuation._args[i]);
               frame[control.args[i]] = addr; }
             control = control.body;
             environment = this.env_push(frame, environment);
@@ -258,7 +267,7 @@ export class CESKM<Base = never> {
       else if ("_let" in kontinuation) {
         const { _let, _exp, _kont } = kontinuation;
         let { _env } = kontinuation;
-        const frame: Env = {};
+        const frame: Env = this.env_empty();
         const addr: string = this.gensym();
         frame[_let] = addr;
         _env = this.env_push(frame, _env);
