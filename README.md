@@ -3,7 +3,7 @@
 Precursor is a small, experimental programming language implemented as a pure
 TypeScript (or pure JavaScript) library.
 
-You can read more details below in the *overview*, and you can even
+You can read more details below in the *synopsis*, and you can even
 [try it out in a live demonstration in your browser][precursordemo].
 
 [precursordemo]: https://niltag.net/code/precursor
@@ -62,7 +62,7 @@ import { strict as assert } from "assert";
 
 type Val = number | boolean | null ;
 
-class ExampleMachine<Val> extends CESKM<Val> {
+class ExampleMachine extends CESKM<Val> {
   constructor (program: string) { super(parse_cbpv(program)); }
 ```
 
