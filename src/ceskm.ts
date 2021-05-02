@@ -59,18 +59,6 @@ export class CESKM<Base = null | boolean> {
       meta: [] }; }
 
   /**
-   * @method run
-   * @returns { Value<Base> } The result value of the control expression.
-   */
-  public run(): Value<Base> {
-    let st: State<Base> = this.make_initial_state();
-    while (!this.result) {
-      const res = this.step(JSON.parse(JSON.stringify((st))));
-      if (!this.result) {
-        st = <State<Base>>res; }}
-    return this.result; }
-
-  /**
    * @method gensym
    * @returns { string } A freshly _gen_erated _sym_bol. Multi-purpose.
    */
