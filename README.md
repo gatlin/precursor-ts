@@ -68,7 +68,7 @@ class ExampleMachine extends CESKM<Val> {
   public run(): Value<Val> {
     let st: State<Val> = this.make_initial_state();
     while (!this.result) {
-      const res = this.step(JSON.parse(JSON.stringify((st))));
+      const res = this.step(st);
       if (!this.result) {
         st = <State<Val>>res; }}
     return this.result; }
