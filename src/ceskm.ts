@@ -240,7 +240,7 @@ export class CESKM<Base = null | boolean> {
     store: Store<Base>,
     meta: Kont<Base>[]
   ): Value<Base> | State<Base> {
-    const finished = false;
+    let finished = false;
     while (!finished) {
       if ("_args" in kontinuation) {
         const { _args, _kont } = kontinuation;
