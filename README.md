@@ -64,6 +64,14 @@ type Val = number | boolean | null ;
 
 class ExampleMachine extends CESKM<Val> {
   constructor (program: string) { super(parse_cbpv(program)); }
+
+  public run(): Value<Val> {
+    let st: State<Val> = this.make_initial_state();
+    while (!this.result) {
+      const res = this.step(st);
+      if (!this.result) {
+        st = <State<Val>>res; }}
+    return this.result; }
 ```
 
 Now we must override the methods `literal` and `op`.
@@ -143,6 +151,14 @@ You can write functions that call ops and pass *those* around all day.
 Having supplied the universe of result types and filled in how they relate to
 literal expressions and what primitive operators are defined for them, you can
 `run` your machine down to a `Value<Result>`.
+
+Note that we had to write our own `run` method.
+You are free to use the one above, as it works and should give a good intuition
+for how evaluation works in the machine, but there are
+[certainly other evaluation strategies you might pursue][othereval].
+Precursor is here to enable you, not constrain you.
+
+[othereval]: https://github.com/gatlin/precursor-site/blob/201c6d49d28c176321bbb8a35694b007d9c222c7/src/main.js#L10
 
 ```typescript
 const example_machine = new ExampleMachine(`
