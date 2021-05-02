@@ -11,10 +11,6 @@ type Val = number | boolean | null ;
 class DebugMachine<Val> extends CESKM<Val> {
   constructor (program: string) { super(parse_cbpv(program)); }
 
-  /**
-   * @method run
-   * @returns { Value<Base> } The result value of the control expression.
-   */
   public run(): Value<Val> {
     let st: State<Val> = this.make_initial_state();
     while (!this.result) {
