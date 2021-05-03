@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/cjs/index.js",
@@ -17,13 +17,15 @@
     "coverage": "jest --coverage",
     "lint": "eslint . --fix --ext .ts",
     "prepare": "npm run test && npm run build",
-    "test": "jest"
+    "test": "jest",
+    "examples": "ts-node examples/iovm"
   },
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
     "modulePathIgnorePatterns": [
-      "<rootDir>/dist"
+      "<rootDir>/dist",
+      "<rootDir>/examples"
     ]
   },
   "devDependencies": {
