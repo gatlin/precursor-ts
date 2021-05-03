@@ -3,7 +3,8 @@
 Precursor is a small, experimental programming language implemented as a pure
 TypeScript (or pure JavaScript) library.
 
-You can read more details below in the *synopsis*, and you can even
+You can read more details below in the *synopsis*, you can see a working example
+(with I/O!) in `examples/iovm.ts`, and you can even
 [try it out in a live demonstration in your browser][precursordemo].
 
 [precursordemo]: https://niltag.net/code/precursor
@@ -155,10 +156,8 @@ literal expressions and what primitive operators are defined for them, you can
 Note that we had to write our own `run` method.
 You are free to use the one above, as it works and should give a good intuition
 for how evaluation works in the machine, but there are
-[certainly other evaluation strategies you might pursue][othereval].
+[certainly other evaluation strategies you might pursue](examples/iovm.ts)
 Precursor is here to enable you, not constrain you.
-
-[othereval]: https://github.com/gatlin/precursor-site/blob/201c6d49d28c176321bbb8a35694b007d9c222c7/src/main.js#L10
 
 ```typescript
 const example_machine = new ExampleMachine(`
