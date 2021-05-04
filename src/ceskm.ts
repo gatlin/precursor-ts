@@ -89,7 +89,7 @@ export class CESKM<Base = null | boolean> {
     return sto; }
 
   protected store_lookup (sto: Store<Base>, addr: string): Value<Base> {
-    let result: Value<Base> = sto[addr];
+    const result: Value<Base> = sto[addr];
     return result; }
 
   protected store_empty (): Store<Base> {
@@ -240,7 +240,7 @@ export class CESKM<Base = null | boolean> {
     store: Store<Base>,
     meta: Kont<Base>[]
   ): Value<Base> | State<Base> {
-    let finished = false;
+    const finished = false;
     while (!finished) {
       if ("_args" in kontinuation) {
         const { _args, _kont } = kontinuation;
