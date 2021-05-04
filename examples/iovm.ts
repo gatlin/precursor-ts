@@ -1,8 +1,9 @@
 /**
- * The big payoff starts at line 246 and should be intelligible without first
+ * The big payoff starts at line 245 and should be intelligible without first
  * poring over all the stuff in the middle.
  */
 
+import { createMachine, assign, interpret } from "xstate";
 import { openSync, readSync, closeSync } from "fs";
 import {
   CESKM,
@@ -11,6 +12,66 @@ import {
   lit,
   State
 } from "../src";
+
+/**
+ * Cross-platform means of opening stdin.
+ */
+function open_stdin(): number {
+  let fd = -1;
+  fd = process.stdin.fd;
+  try {
+    fd = openSync("/dev/stdin", "rs") as number;
+  }
+  catch (e) { console.error(e); }
+  return fd;
+}
+
+/**
+ * A (non-async) generator for a given file descriptor.
+ * Yields each line from the given file.
+ * ASSUMPTIONS:
+ * - the file is already open;
+ * - the file will be closed by someone else.
+ */
+function *file_lines_gen(fd: number): Generator<string,void,boolean> {
+  const BUFSIZE = 256;
+  const end_byte = "\n".charCodeAt(0);
+  let stop = false;
+  const buf = Buffer.alloc(BUFSIZE);
+  while (true !== stop) {
+    let total_buf = Buffer.alloc(BUFSIZE);
+    let total_bytes_read = 0;
+    let bytes_read = 0;
+    let end_byte_read = false;
+    if (fd < 0) { throw new Error("Could not open stdin"); }
+    while (!end_byte_read) {
+      try {
+        bytes_read = readSync(fd, buf, 0, BUFSIZE, null);
+        const tmp_buf = Buffer.alloc(total_bytes_read + bytes_read);
+        total_buf.copy(tmp_buf, 0, 0, total_bytes_read);
+        buf.copy(tmp_buf, total_bytes_read, 0, bytes_read);
+        total_buf = tmp_buf;
+        total_bytes_read += bytes_read;
+        for (let i = 0; i < bytes_read; i++) {
+          if (end_byte === buf[i]) {
+            end_byte_read = true;
+          }
+        }
+      }
+      catch (e) {
+        if ("EOF" === e.code) { stop = true; }
+        else {
+          throw e;
+        }
+      }
+    }
+    stop = yield total_buf.toString("utf-8").slice(0,-1);
+    if (!stop) {
+      stop = false;
+    }
+  }
+}
+
 
 /* In addition to closures, the universe of values our VM will compute with. */
 type Val = string | number | boolean | null ;
@@ -23,82 +84,22 @@ class VM extends CESKM<Val> {
   }
 
   public *run(): Generator<State<Val>,Value<Val>,State<Val>> {
-    const fd = this.open_stdin();
-    this.stdin = this.file_lines_gen(fd);
-    let ceskm = this.make_initial_state();
     let result : Value<Val> | null = null;
+    let ceskm : State<Val> = this.make_initial_state();
     yield ceskm;
-    while (!result) {
-      const value_or_state: Value<Val> | State<Val> = this.step(ceskm);
-      if ("v" in value_or_state) {
+    const fd = open_stdin();
+    this.stdin = file_lines_gen(fd);
+    while (null === result) {
+      const value_or_state : Value<Val> | State<Val> = this.step(ceskm);
+      if ("v" in value_or_state || "_kont" in value_or_state || "_exp" in value_or_state) {
         result = value_or_state as Value<Val>;
       }
       else {
-        const reply = yield value_or_state as State<Val>;
-        ceskm = reply ? reply : value_or_state as State<Val>;
+        ceskm = yield (value_or_state as State<Val>);
       }
     }
     closeSync(fd);
-    return result as Value<Val>;
-  }
-
-  /**
-   * Cross-platform means of opening stdin.
-   */
-  protected open_stdin(): number {
-    let fd = -1;
-    fd = process.stdin.fd;
-    try {
-      fd = openSync("/dev/stdin", "rs") as number;
-    }
-    catch (e) { console.error(e); }
-    return fd;
-  }
-
-  /**
-   * A (non-async) generator for a given file descriptor.
-   * Yields each line from the given file.
-   * ASSUMPTIONS:
-   * - the file is already open;
-   * - the file will be closed by someone else.
-   */
-  protected *file_lines_gen(fd: number): Generator<string,void,boolean> {
-    const BUFSIZE = 256;
-    const end_byte = "\n".charCodeAt(0);
-    let stop = false;
-    const buf = Buffer.alloc(BUFSIZE);
-    while (true !== stop) {
-      let total_buf = Buffer.alloc(BUFSIZE);
-      let total_bytes_read = 0;
-      let bytes_read = 0;
-      let end_byte_read = false;
-      if (fd < 0) { throw new Error("Could not open stdin"); }
-      while (!end_byte_read) {
-        try {
-          bytes_read = readSync(fd, buf, 0, BUFSIZE, null);
-          const tmp_buf = Buffer.alloc(total_bytes_read + bytes_read);
-          total_buf.copy(tmp_buf, 0, 0, total_bytes_read);
-          buf.copy(tmp_buf, total_bytes_read, 0, bytes_read);
-          total_buf = tmp_buf;
-          total_bytes_read += bytes_read;
-          for (let i = 0; i < bytes_read; i++) {
-            if (end_byte === buf[i]) {
-              end_byte_read = true;
-            }
-          }
-        }
-        catch (e) {
-          if ("EOF" === e.code) { stop = true; }
-          else {
-            throw e;
-          }
-        }
-      }
-      stop = yield total_buf.toString("utf-8").slice(0,-1);
-      if (!stop) {
-        stop = false;
-      }
-    }
+    return result;
   }
 
   // eslint-disable-next-line
@@ -279,46 +280,52 @@ const vm = new VM(`
       _ ; undefined behavior
   )))))))))
 
-  ; Constructs a friendly message for a name string.
+  ; Composes writeln and readln.
+  (prompt (λ (message)
+    (let _ ((? writeln) message)
+    ((? readln)))))
+
+  ; Helper: constructs a friendly salutation for a given name.
   (welcome (λ (name)
     (let name (? name)
     (op:concat "Welcome, "
     (op:concat name "!")))))
 
+  ; Helper: computes an Interesting Fact™ about a given human age.
   (dog-years (λ (age)
     (let age (? age)
     (let age-times-7 (op:num->str (op:mul (op:str->num age) 7))
     (op:concat "Whoa! That is "
     (op:concat age-times-7 " in dog years!"))))))
 
+  (pair (λ (a b) (reset ((shift k k) a b))))
 )
 ((? run-fx) (!
-  (let _ ((? writeln) "Hello, what is your name?")
-  (let name ((? readln))
+  (let name ((? prompt) "What is your name?")
   (let _ ((? writeln) (! ((? welcome) name)))
-  (let _ ((? writeln) "How old are you?")
-  (let age ((? readln))
+  (let age ((? prompt) "How old are you?")
   (let _ ((? writeln) (! ((? dog-years) age)))
-  ((? return) (op:strlen name))))))))))
+  (let p ((? pair) name age)
+  ((? return) p))))))))
 )
 `);
 
-const execution: Generator<State<Val>,Value<Val>> = vm.run();
-let result: Value<Val> | null = null;
-let state: State<Val> | undefined;
-while (!result) {
+const execution = vm.run();
+let iter: IteratorResult<State<Val>,Value<Val>> = execution.next();
+while (!iter.done) {
   try {
-    const iter: IteratorResult<State<Val>,Value<Val>> = execution.next(state);
-    if (iter.done) {
-      result = iter.value as Value<Val>;
-    }
-    else {
-      state = iter.value;
-    }
+    iter = execution.next({ ...iter.value  });
   }
   catch (err) {
     console.error("ERROR",err);
     break;
   }
 }
-console.log("result", result);
+if (!iter.done) {
+  throw new Error("");
+}
+let filtered: Partial<Value<Val>> = { ...iter.value };
+if ("_env" in filtered) {
+  delete filtered._env;
+}
+console.log("result", JSON.stringify(filtered, null, 2));

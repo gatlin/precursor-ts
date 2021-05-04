@@ -156,7 +156,7 @@ literal expressions and what primitive operators are defined for them, you can
 Note that we had to write our own `run` method.
 You are free to use the one above, as it works and should give a good intuition
 for how evaluation works in the machine, but there are
-[certainly other evaluation strategies you might pursue](examples/iovm.ts)
+[certainly other evaluation strategies you might pursue](examples/iovm.ts#L313)
 Precursor is here to enable you, not constrain you.
 
 ```typescript
