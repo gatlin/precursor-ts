@@ -1,5 +1,5 @@
 /**
- * The big payoff starts at line 228 and should be intelligible without first
+ * The big payoff starts at line 246 and should be intelligible without first
  * poring over all the stuff in the middle.
  */
 
@@ -16,7 +16,6 @@ import {
 type Val = string | number | boolean | null ;
 
 class VM extends CESKM<Val> {
-  private readonly BUFSIZE: number = 256;
   private stdin: Generator<string,void,boolean> | undefined;
 
   constructor (program: string) {
@@ -201,6 +200,24 @@ class VM extends CESKM<Val> {
         const result: unknown = args[0].v.slice(args[1].v,args[2].v);
         return lit(result as Val);
       }
+      case "op:str->num": {
+        if (! ("v" in args[0])) {
+          throw new Error(`argument must be a value`);
+        }
+        if ("string" !== typeof args[0].v) {
+          throw new Error(`argument must be a string: ${args[0].v}`);
+        }
+        return lit(parseInt(args[0].v as string) as Val);
+      }
+      case "op:num->str": {
+        if (! ("v" in args[0])) {
+          throw new Error(`argument must be a value`);
+        }
+        if ("number" !== typeof args[0].v) {
+          throw new Error(`argument must be a number: ${args[0].v}`);
+        }
+        return lit((args[0].v as number).toString() as Val);
+      }
       case "op:puts": {
         if (! ("v" in args[0])) {
           throw new Error(`argument must be a value`);
@@ -220,6 +237,7 @@ class VM extends CESKM<Val> {
         }
         throw new Error(`stdin is closed for good.`);
       }
+      // You are encouraged (and expected!) to add more ops here.
       default: return super.op(op_sym, args);
     }
   }
@@ -267,9 +285,12 @@ const vm = new VM(`
     (op:concat "Welcome, "
     (op:concat name "!")))))
 
-  (flatter (λ (age)
+  (dog-years (λ (age)
     (let age (? age)
-    (op:concat age "? But you look so young!"))))
+    (let age-times-7 (op:num->str (op:mul (op:str->num age) 7))
+    (op:concat "Whoa! That is "
+    (op:concat age-times-7 " in dog years!"))))))
+
 )
 ((? run-fx) (!
   (let _ ((? writeln) "Hello, what is your name?")
@@ -277,7 +298,7 @@ const vm = new VM(`
   (let _ ((? writeln) (! ((? welcome) name)))
   (let _ ((? writeln) "How old are you?")
   (let age ((? readln))
-  (let _ ((? writeln) (! ((? flatter) age)))
+  (let _ ((? writeln) (! ((? dog-years) age)))
   ((? return) (op:strlen name))))))))))
 )
 `);
