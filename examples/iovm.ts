@@ -36,7 +36,7 @@ class VM extends CESKM<Val> {
       }
       else {
         const reply = yield value_or_state as State<Val>;
-        ceskm = reply ? reply : ceskm;
+        ceskm = reply ? reply : value_or_state as State<Val>;
       }
     }
     closeSync(fd);
