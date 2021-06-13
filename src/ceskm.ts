@@ -30,7 +30,7 @@ export const letk = <T>(
 export type Value<T> = { v: T } | { k: Kont<T> };
 
 export const continuation = <T>(k: Kont<T>): Value<T> => ({ k });
-export const lit = <T>(v: T): Value<T> => ({ v });
+export const scalar = <T>(v: T): Value<T> => ({ v });
 export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({
   k: { _exp, _env, _let: [], _k: topk() }
 });
@@ -143,8 +143,9 @@ export class CESKM<Base = null | boolean> {
   /**
    * @method step
    * @param {State<Base>} state
-   * @returns { Value<Base> | State<Base> } Returns a `State` in the event that there is
-   * more work to be done, but otherwise it returns the final result `Value`.
+   * @returns { State<Base> | null } Returns a `State` in the event that there is
+   * more work to be done, but otherwise it returns `null`.
+   * The result `Value<Base>` will be set on `this.result`.
    * @remarks Advances the machine forward one step. Some terms
    * (namely, `AppA`, `LetA`, and `LetrecA`) do not constitute a complete step
    * by themselves; conversely, they may be nested arbitrarily within a single
@@ -152,7 +153,7 @@ export class CESKM<Base = null | boolean> {
    * is for; this function is still guaranteed™ to terminate for well-formed
    * inputs.
    */
-  protected step(state: State<Base>): Value<Base> | State<Base> {
+  protected step(state: State<Base>): State<Base> | null {
     let finished = false;
     let { control, environment, store, kontinuation } = state;
     const { meta } = state;
@@ -209,7 +210,7 @@ export class CESKM<Base = null | boolean> {
             return { control, environment, store, kontinuation, meta };
           }
           else {
-            return this.continue(val, kontinuation, store, meta); }}
+            return this.continue(val, kontinuation, store, meta)!; }}
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
             const frame: Env = this.env_empty();
@@ -244,9 +245,10 @@ export class CESKM<Base = null | boolean> {
     kontinuation: Kont<Base>,
     store: Store<Base>,
     meta: Kont<Base>[]
-  ): Value<Base> | State<Base> {
+  ): State<Base> | null {
     const finished = false;
     while (!finished) {
+      // update each "val" with corresp. "actual_val" and then loop
       if ("_args" in kontinuation) {
         const { _args, _k } = kontinuation;
         const actual_val: Value<Base> = _args[0];
@@ -276,7 +278,7 @@ export class CESKM<Base = null | boolean> {
       else {
         if (0 === meta.length) {
           this.result = val;
-          return val; }
+          return null; }
         else {
           const k: Kont<Base> = meta.shift() || topk();
           kontinuation = k; } } }
