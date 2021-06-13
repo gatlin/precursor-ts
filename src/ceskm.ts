@@ -27,13 +27,13 @@ export const letk = <T>(
   _k: Kont<T>
 ): Kont<T> => ({ _let, _exp, _env, _k });
 
-export type Value<T> = { v: T } | { _k: Kont<T> };
+export type Value<T> = { v: T } | { k: Kont<T> };
 
-export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({
-  _k: { _exp, _env, _let: [], _k: topk() }
-});
-export const continuation = <T>(_k: Kont<T>): Value<T> => ({ _k });
+export const continuation = <T>(k: Kont<T>): Value<T> => ({ k });
 export const lit = <T>(v: T): Value<T> => ({ v });
+export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({
+  k: { _exp, _env, _let: [], _k: topk() }
+});
 
 /* Finally, the store */
 
@@ -203,9 +203,9 @@ export class CESKM<Base = null | boolean> {
           return { control, environment, store, kontinuation, meta }; }
         case "cbpv_resume": {
           const val = this.positive(control.v, environment, store);
-          if ("_k" in val && "_exp" in val._k) {
-            control = val._k._exp;
-            environment = val._k._env;
+          if ("k" in val && "_exp" in val.k) {
+            control = val.k._exp;
+            environment = val.k._env;
             return { control, environment, store, kontinuation, meta };
           }
           else {
@@ -252,10 +252,10 @@ export class CESKM<Base = null | boolean> {
         const actual_val: Value<Base> = _args[0];
         const next_k: Kont<Base> = _k;
         meta.unshift(next_k);
-        if (! ("_k" in val))
+        if (! ("k" in val))
           { throw new Error(`expected continuation: ${JSON.stringify(val)}`); }
         else
-          { kontinuation = val._k; }
+          { kontinuation = val.k; }
         val = actual_val; }
       else if ("_let" in kontinuation) {
         const { _let, _exp, _k} = kontinuation;
