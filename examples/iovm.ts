@@ -90,7 +90,7 @@ class VM extends CESKM<Val> {
     this.stdin = file_lines_gen(fd);
     while (null === result) {
       const value_or_state : Value<Val> | State<Val> = this.step(ceskm);
-      if ("v" in value_or_state || "_kont" in value_or_state || "_exp" in value_or_state) {
+      if ("v" in value_or_state || "_k" in value_or_state ) {
         result = value_or_state as Value<Val>;
       }
       else {
@@ -324,7 +324,4 @@ if (!iter.done) {
   throw new Error("");
 }
 let filtered: Partial<Value<Val>> = { ...iter.value };
-if ("_env" in filtered) {
-  delete filtered._env;
-}
 console.log("result", JSON.stringify(filtered, null, 2));
