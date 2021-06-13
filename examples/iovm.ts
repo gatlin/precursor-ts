@@ -83,16 +83,14 @@ class VM extends CESKM<Val> {
   }
 
   public *run(): Generator<State<Val>,Value<Val>,State<Val>> {
-    let result : Value<Val> | null = null;
     let ceskm : State<Val> = this.make_initial_state();
     yield ceskm;
     const fd = open_stdin();
     this.stdin = file_lines_gen(fd);
     while (null === this.result) {
       const value_or_state : null | State<Val> = this.step(ceskm);
-      if (value_or_state) {
-        ceskm = yield (value_or_state as State<Val>);
-      }
+      if (value_or_state)
+        { ceskm = yield (value_or_state as State<Val>); }
     }
     closeSync(fd);
     return this.result;
