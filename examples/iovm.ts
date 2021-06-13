@@ -269,7 +269,7 @@ const vm = new VM(`
         (let output (? output)
         (let _ (op:puts output)
         (let res (! (continue _))
-        ((? run-fx) res))))
+        ((? run-fx) res)))))
       (if (op:eq "io:readln" effect-tag) (λ (continue)
         (let input (op:gets)
         (let res (! (continue input))
