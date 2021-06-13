@@ -10,24 +10,29 @@ export type Env = { [name:string]: string | Cbpv };
 /* Continuations and Values */
 export type Kont<T>
   = Record<string,never>
-  | { _args: Value<T>[], _kont: Kont<T> }
-  | { _let: string, _exp: Cbpv, _env: Env, _kont: Kont<T> };
-export const topk = <T>(): Kont<T> => ({});
-export const argk = <T>(_args: Value<T>[], _kont: Kont<T>): Kont<T> => ({
-  _args, _kont });
+  | { _let: string []
+    ; _exp: Cbpv
+    ; _env: Env
+    ; _k: Kont<T> }
+  | { _args: Value<T>[] ; _k: Kont<T> }
+  ;
+
+export const topk = <T>(_v?: T): Kont<T> => ({ });
+export const argk = <T>(_args: Value<T>[], _k: Kont<T>): Kont<T> => ({
+  _args, _k });
 export const letk = <T>(
-  _let: string,
+  _let: string[],
   _exp: Cbpv,
   _env: Env,
-  _kont: Kont<T>
-): Kont<T> => ({ _let, _exp, _env, _kont });
+  _k: Kont<T>
+): Kont<T> => ({ _let, _exp, _env, _k });
 
-export type Value<T>
-  = { _exp: Cbpv, _env: Env }
-  | { _kont: Kont<T> }
-  | { v : T } ;
-export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({ _exp, _env });
-export const continuation = <T>(_kont: Kont<T>): Value<T> => ({ _kont });
+export type Value<T> = { v: T } | { _k: Kont<T> };
+
+export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({
+  _k: { _exp, _env, _let: [], _k: topk() }
+});
+export const continuation = <T>(_k: Kont<T>): Value<T> => ({ _k });
 export const lit = <T>(v: T): Value<T> => ({ v });
 
 /* Finally, the store */
@@ -163,7 +168,7 @@ export class CESKM<Base = null | boolean> {
         case "cbpv_let": {
           const { v, exp, body } = control;
           control = exp;
-          kontinuation = letk(v, body, environment, kontinuation );
+          kontinuation = letk([v], body, environment, kontinuation );
           break; }
         case "cbpv_letrec": {
           const frame: Env = this.env_empty();
@@ -198,9 +203,9 @@ export class CESKM<Base = null | boolean> {
           return { control, environment, store, kontinuation, meta }; }
         case "cbpv_resume": {
           const val = this.positive(control.v, environment, store);
-          if ("_exp" in val) {
-            control = val._exp;
-            environment = val._env;
+          if ("_k" in val && "_exp" in val._k) {
+            control = val._k._exp;
+            environment = val._k._env;
             return { control, environment, store, kontinuation, meta };
           }
           else {
@@ -214,7 +219,7 @@ export class CESKM<Base = null | boolean> {
               frame[control.args[i]] = addr; }
             control = control.body;
             environment = this.env_push(frame, environment);
-            kontinuation = kontinuation._kont;
+            kontinuation = kontinuation._k;
             return { control, environment, store, kontinuation, meta }; }
           throw new Error('invalid continuation for function'); }
         default: finished = true; } }
@@ -243,28 +248,30 @@ export class CESKM<Base = null | boolean> {
     const finished = false;
     while (!finished) {
       if ("_args" in kontinuation) {
-        const { _args, _kont } = kontinuation;
+        const { _args, _k } = kontinuation;
         const actual_val: Value<Base> = _args[0];
-        const next_k: Kont<Base> = _kont;
+        const next_k: Kont<Base> = _k;
         meta.unshift(next_k);
-        if (! ("_kont" in val))
+        if (! ("_k" in val))
           { throw new Error(`expected continuation: ${JSON.stringify(val)}`); }
         else
-          { kontinuation = val._kont; }
+          { kontinuation = val._k; }
         val = actual_val; }
       else if ("_let" in kontinuation) {
-        const { _let, _exp, _kont } = kontinuation;
+        const { _let, _exp, _k} = kontinuation;
+        if (1 !== _let.length)
+          { throw new Error(`invalid # of args for letk: ${_let.length}`); }
         let { _env } = kontinuation;
         const frame: Env = this.env_empty();
         const addr: string = this.gensym();
-        frame[_let] = addr;
+        frame[_let[0]] = addr;
         _env = this.env_push(frame, _env);
         store[addr] = val;
         return {
           control: _exp,
           environment: _env,
           store,
-          kontinuation: _kont,
+          kontinuation: _k,
           meta }; }
       else {
         if (0 === meta.length) {
