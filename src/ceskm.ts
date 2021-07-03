@@ -268,7 +268,7 @@ export class CESKM<Base = null | boolean> {
         const addr: string = this.gensym();
         frame[_let[0]] = addr;
         _env = this.env_push(frame, _env);
-        store[addr] = val;
+        store = this.store_bind(store, addr, val);
         return {
           control: _exp,
           environment: _env,
