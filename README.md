@@ -203,7 +203,7 @@ This prints the following:
 
 ```json
 {
-  "_kont": {
+  "k": {
     "_args": [
       {
         "v": 3
@@ -212,7 +212,7 @@ This prints the following:
         "v": false
       }
     ],
-    "_kont": {}
+    "_k": {}
   }
 }
 ```

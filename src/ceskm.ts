@@ -17,7 +17,7 @@ export type Kont<T>
   | { _args: Value<T>[] ; _k: Kont<T> }
   ;
 
-export const topk = <T>(_v?: T): Kont<T> => ({ });
+export const topk = <T>(): Kont<T> => ({ });
 export const argk = <T>(_args: Value<T>[], _k: Kont<T>): Kont<T> => ({
   _args, _k });
 export const letk = <T>(
