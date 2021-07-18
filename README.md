@@ -70,7 +70,7 @@ class ExampleMachine extends CESKM<Val> {
     while (!this.result) {
       const res = this.step(st);
       if (!this.result) {
-        st = <State<Val>>res; }}
+        st = res as State<Val>; }}
     return this.result; }
 ```
 
