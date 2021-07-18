@@ -232,8 +232,8 @@ export class CESKM<Base = null | boolean> {
    * @param { Kont<Base> } kontinuation
    * @param { Store<Base> } store
    * @param { Kont<Base>[] } meta
-   * @returns { Value<Base> | State<Base> } A result `Value` or another `State` if there is
-   * more work to be done.
+   * @returns { null | State<Base> } A `State` if there is more work to be
+   * done, or `null` if the computation has terminated.
    * @remarks This method tries to apply the current continuation to a value.
    */
   private continue(
@@ -242,7 +242,8 @@ export class CESKM<Base = null | boolean> {
     store: Store<Base>,
     meta: Kont<Base>[]
   ): State<Base> | null {
-    const finished = false;
+    let finished = false;
+    let final: State<Base> | null = null;
     while (!finished) {
       // update each "val" with corresp. "actual_val" and then loop
       if ("_args" in kontinuation) {
@@ -265,20 +266,22 @@ export class CESKM<Base = null | boolean> {
         frame[_let[0]] = addr;
         _env = this.env_push(frame, _env);
         store = this.store_bind(store, addr, val);
-        return {
+        final = {
           control: _exp,
           environment: _env,
           store,
           kontinuation: _k,
-          meta }; }
+          meta };
+        finished = true; }
       else {
         if (0 === meta.length) {
           this.result = val;
-          return null; }
+          final = null;
+          finished = true; }
         else {
           const k: Kont<Base> = meta.shift() || topk();
           kontinuation = k; } } }
-    throw new Error("Invalid continuation."); }
+    return final; }
 
   /**
    * @method op
