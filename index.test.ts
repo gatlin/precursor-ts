@@ -3,7 +3,8 @@ import {
   Value,
   State,
   parse_cbpv
-} from "../src/index";
+} from "./src/index";
+import { test } from "tap";
 
 // eslint-disable-next-line
 type Val = number | boolean | null ;
@@ -157,33 +158,37 @@ class DebugMachine<Val> extends CESKM<Val> {
   }
 }
 
-describe("index", () => {
-  test('scenario check 1', () => {
-    expect(new DebugMachine().run(`
+test('scenario check 1', (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (sqr-int (λ (n) (op:mul n n)))
 )
-((? sqr-int) 69))`)).
-      toStrictEqual({
-        v: 4761
+((? sqr-int) 69))
+`);
+  t.same(result, {
+    v: 4761
+  });
+  t.end();
+});
+
+test("scenario check 2", (t) => {
+    const result = new DebugMachine().run("( (\\ (x) (op:mul x 2)) 210)");
+    t.same(result, {
+      v: 420
     });
-  });
-  test("scenario check 2", () => {
-    expect(new DebugMachine().run("( (\\ (x) (op:mul x 2)) 210)")).
-      toStrictEqual({
-        v: 420
-      });
-  });
+    t.end();
+});
 
-  test("scenario check 3", () => {
-    expect(new DebugMachine().run("(let n (op:add 1 2) (op:mul n 2))")).
-      toStrictEqual({
-        v: 6
-      });
+test("scenario check 3", (t) => {
+  const result = new DebugMachine().run("(let n (op:add 1 2) (op:mul n 2))");
+  t.same(result, {
+    v: 6
   });
+  t.end();
+});
 
-  test("scenario check 4", () => {
-    expect(new DebugMachine().run(`
+test("scenario check 4", (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (fact-tailrec (λ (n total)
     (if (op:eq n 2)
@@ -192,36 +197,40 @@ describe("index", () => {
 )
 ((? fact-tailrec) 10 1)
 )
-    `)).
-      toStrictEqual({
-        v: 1814400
-      });
+`);
+  t.same(result,{
+    v: 1814400
   });
+  t.end();
+});
 
-  test("scenario check 5", () => {
-    expect(new DebugMachine().run(`
+test("scenario check 5", (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (times (λ (a b) (op:mul a b)))
 )
 ((? times) 2 4))
-    `)).
-      toStrictEqual({
-        v: 8
-      });
+`);
+  t.same(result,{
+    v: 8
   });
+  t.end();
+});
 
-  test("scenario check 6", () => {
-    expect(new DebugMachine().run(`
+test("scenario check 6", (t) => {
+  const result = new DebugMachine().run(`
 (let f (reset (shift k k))
 (let n (f (op:add 10 55))
 (op:mul 3 n)))
-    `)).
-      toStrictEqual({
-        v: 195
-      });
+`);
+  t.same(result, {
+    v: 195
   });
-  test("scenario check 7", () => {
-    expect(new DebugMachine().run(`
+  t.end();
+});
+
+test("scenario check 7", (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (seventeen (λ ()
     (let sixteen (reset
@@ -240,13 +249,15 @@ describe("index", () => {
 )
 ((? fact) (! ((? seventeen))))
 )
-    `)).
-      toStrictEqual({
-        v: 355687428096000
-      });
+`);
+  t.same(result, {
+    v: 355687428096000
   });
-  test('scenario check 8', () => {
-    expect(new DebugMachine().run(`
+  t.end();
+});
+
+test('scenario check 8', (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (make-reducer (λ (initial-value) (letrec (
     (loop (λ (total first-run) (reset
@@ -265,13 +276,15 @@ describe("index", () => {
 (let the-reducer (the-reducer 420)
 (the-reducer 0))))
 )
-    `)).
-      toStrictEqual({
-        v: 911666
-      });
+`);
+  t.same(result,{
+    v: 911666
   });
-  test('scenario check 9', () => {
-    expect(new DebugMachine().run(`
+  t.end();
+});
+
+test('scenario check 9', (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
   (next (λ (gen)
@@ -291,13 +304,15 @@ describe("index", () => {
 (let n3 ((? peek) gen)
 (op:add (op:add n1 n2) n3)))))))
 )
-    `)).
-      toStrictEqual({
-        v: 6
-      });
+`);
+  t.same(result,{
+    v: 6
   });
-  test('scenario check 10', () => {
-    expect(new DebugMachine().run(`
+  t.end();
+});
+
+test('scenario check 10', (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
 
   (yield (λ (value) (shift k (! (λ (p) ((? p) value k))))))
@@ -336,13 +351,15 @@ describe("index", () => {
 (let n3 ((? peek) gen)
 (op:add (op:add n1 n2) (op:add n3 n))))))))))))
 )
-    `)).
-      toStrictEqual({
-        v: 911672
-      });
+`);
+  t.same(result, {
+    v: 911672
   });
-  test('scenario check 11', () => {
-    const machine = new DebugMachine();
+  t.end();
+});
+
+test('scenario check 11', (t) => {
+  const machine = new DebugMachine();
   try {
     const res = machine.run(`
 (letrec (
@@ -362,18 +379,20 @@ describe("index", () => {
 ((? fn) num) )))
 )
 `);
-    expect(res).
-      toStrictEqual({
-        v: false
+    t.same(res, {
+      v: false
     });
   }
   catch (e) {
     console.error(e);
   }
- });
+  finally {
+    t.end();
+  }
+});
 
-  test('scenario check 12', () => {
-      expect(new DebugMachine().run(`
+test('scenario check 12', (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (foldr (λ (c e xs)
     (let xs (? xs)
@@ -400,14 +419,15 @@ describe("index", () => {
     7
     list-1 ))
 )
-      `)).
-        toStrictEqual({
-          v: 7
-        });
+`);
+  t.same(result,{
+    v: 7
   });
+  t.end();
+});
 
-  test('scenario check 13', () => {
-      expect(new DebugMachine().run(`
+test('scenario check 13', (t) => {
+  const result = new DebugMachine().run(`
 (letrec (
   (foldr (λ (c e xs)
     (let xs (? xs)
@@ -435,14 +455,15 @@ describe("index", () => {
     7
     list-1 ))
 )
-      `)).
-        toStrictEqual({
-          v: 17
-        });
+      `);
+  t.same(result, {
+    v: 17
   });
+  t.end();
+});
 
-  test('comment test', () => {
-    expect(new DebugMachine().run(`
+test('comment test', (t) => {
+  const result = new DebugMachine().run(`
 (letrec ( ; comment 1
   (fact-tailrec (λ (n total)
 ;comment 2
@@ -452,10 +473,10 @@ describe("index", () => {
 )
 ((? fact-tailrec) 10 1) ;; comment 4
 )
-    `)).
-      toStrictEqual({
-        v: 1814400
-      });
+    `);
+  t.same(result, {
+    v: 1814400
   });
+  t.end();
 });
 
