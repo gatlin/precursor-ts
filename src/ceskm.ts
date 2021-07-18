@@ -69,7 +69,7 @@ export class CESKM<Base = null | boolean> {
   /**
    * @method literal
    * @returns { Value<Base> } A value representation of the syntactic literal.
-   * Sub-classes will need to override this method if they change the type T.
+   * Sub-classes will need to override this method if they change the Base type.
    */
   protected literal(v: Base): Value<Base> {
     return closure(cbpv_lit(v), this.env_empty()); }

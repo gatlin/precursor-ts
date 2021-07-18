@@ -64,10 +64,9 @@ import { strict as assert } from "assert";
 type Val = number | boolean | null ;
 
 class ExampleMachine extends CESKM<Val> {
-  constructor (program: string) { super(parse_cbpv(program)); }
 
-  public run(): Value<Val> {
-    let st: State<Val> = this.make_initial_state();
+  public run(program: string): Value<Val> {
+    let st: State<Val> = this.make_initial_state(parse_cbpv(program));
     while (!this.result) {
       const res = this.step(st);
       if (!this.result) {
@@ -160,7 +159,8 @@ for how evaluation works in the machine, but there are
 Precursor is here to enable you, not constrain you.
 
 ```typescript
-const example_machine = new ExampleMachine(`
+const example_machine = new ExampleMachine();
+const result = example_machine.run(`
 (letrec (
   (square (λ (n)
     (let n (? n)      ; op arguments must be *fully* evaluated.
@@ -173,7 +173,7 @@ const example_machine = new ExampleMachine(`
 )
 `);
 
-assert.deepStrictEqual(example_machine.run(), { v: 9 });
+assert.deepStrictEqual(result, { v: 9 });
 ```
 
 ## are there data structures? a type system?
@@ -188,7 +188,7 @@ As for data structures,
 2. look at this:
 
 ```typescript
-const example_machine = new ExampleMachine(`
+const result = new ExampleMachine().run(`
 (letrec (
   (cons (λ (a b) (reset ((shift k k) a b))))
 )
@@ -196,7 +196,7 @@ const example_machine = new ExampleMachine(`
 p1)
 )
 `);
-console.log(example_machine.run());
+console.log(result);
 ```
 
 This prints the following:
