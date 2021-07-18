@@ -51,13 +51,9 @@ export class CESKM<Base = null | boolean> {
   protected result: Value<Base> | null = null;
   protected gensym_count = 0;
 
-  constructor (
-    protected readonly control: Cbpv
-  ) {}
-
-  protected make_initial_state(): State<Base> {
+  protected make_initial_state(control: Cbpv): State<Base> {
     return {
-      control: this.control,
+      control,
       environment: this.env_empty(),
       store: {},
       kontinuation: topk(),

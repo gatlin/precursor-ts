@@ -78,12 +78,8 @@ type Val = string | number | boolean | null ;
 class VM extends CESKM<Val> {
   private stdin: Generator<string,void,boolean> | undefined;
 
-  constructor (program: string) {
-    super(parse_cbpv(program));
-  }
-
-  public *run(): Generator<State<Val>,Value<Val>,State<Val>> {
-    let ceskm : State<Val> = this.make_initial_state();
+  public *run(program: string): Generator<State<Val>,Value<Val>,State<Val>> {
+    let ceskm : State<Val> = this.make_initial_state(parse_cbpv(program));
     yield ceskm;
     const fd = open_stdin();
     this.stdin = file_lines_gen(fd);
@@ -238,7 +234,9 @@ class VM extends CESKM<Val> {
   }
 }
 
-const vm = new VM(`
+const vm = new VM();
+
+const execution = vm.run(`
 (letrec (
   ; The trivial effect.
   (return (λ (value) (shift k
@@ -304,8 +302,6 @@ const vm = new VM(`
   ((? return) p))))))))
 )
 `);
-
-const execution = vm.run();
 let iter: IteratorResult<State<Val>,Value<Val>> = execution.next();
 while (!iter.done) {
   try {
