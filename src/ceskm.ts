@@ -48,7 +48,6 @@ export type State<T> = {
 
 /* The CESKM virtual machine */
 export class CESKM<Base = null | boolean> {
-  protected result: Value<Base> | null = null;
   protected gensym_count = 0;
 
   protected make_initial_state(control: Cbpv): State<Base> {
@@ -101,10 +100,8 @@ export class CESKM<Base = null | boolean> {
    * @param { Cbpv } expr The positive expression we are evaluating.
    * @param { Env } env
    * @param { Store<Base> } store
-   * @returns { Value<Base> } The resulting value from a positive term.
+   * @returns { Value<Base> }
    * @throws if the expression isn't positive.
-   * @remarks Runs in a loop so that arbitrarily-nested suspensions can be
-   * evaluated in one call.
    */
   private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
     let finished = false;
@@ -139,17 +136,9 @@ export class CESKM<Base = null | boolean> {
   /**
    * @method step
    * @param {State<Base>} state
-   * @returns { State<Base> | null } Returns a `State` in the event that there is
-   * more work to be done, but otherwise it returns `null`.
-   * The result `Value<Base>` will be set on `this.result`.
-   * @remarks Advances the machine forward one step. Some terms
-   * (namely, `AppA`, `LetA`, and `LetrecA`) do not constitute a complete step
-   * by themselves; conversely, they may be nested arbitrarily within a single
-   * step so long as they wrap one of the complete steps. That's what the loop
-   * is for; this function is still guaranteed™ to terminate for well-formed
-   * inputs.
+   * @returns {IteratorResult<Value<Base>,State<Base>>}
    */
-  protected step(state: State<Base>): State<Base> | null {
+  protected step(state: State<Base>): IteratorResult<State<Base>,Value<Base>> {
     let finished = false;
     let { control, environment, store, kontinuation } = state;
     const { meta } = state;
@@ -183,13 +172,17 @@ export class CESKM<Base = null | boolean> {
           control = control.body;
           store = this.store_bind(store, addr, continuation(cc));
           kontinuation = topk();
-          return { control, environment, store, kontinuation, meta }; }
+          return {
+            done: false,
+            value: { control, environment, store, kontinuation, meta }}};
         case "cbpv_reset": {
           const cc: Kont<Base> = kontinuation;
           control = control.exp;
           kontinuation = topk();
           meta.unshift(cc);
-          return { control, environment, store, kontinuation, meta }; }
+          return {
+            done: false,
+            value: { control, environment, store, kontinuation, meta } }};
         case "cbpv_if": {
           const cv = this.positive(control.c, environment, store);
           if (! ("v" in cv))
@@ -197,13 +190,17 @@ export class CESKM<Base = null | boolean> {
           if ("boolean" !== typeof cv.v)
             { throw new Error("`if` conditional must be boolean"); }
           control = cv.v ? control.t : control.e;
-          return { control, environment, store, kontinuation, meta }; }
+          return {
+            done: false,
+            value: { control, environment, store, kontinuation, meta } }};
         case "cbpv_resume": {
           const val = this.positive(control.v, environment, store);
           if ("k" in val && "_exp" in val.k) {
             control = val.k._exp;
             environment = val.k._env;
-            return { control, environment, store, kontinuation, meta };
+            return {
+              done: false,
+              value: { control, environment, store, kontinuation, meta }};
           }
           else {
             return this.continue(val, kontinuation, store, meta)!; }}
@@ -217,7 +214,9 @@ export class CESKM<Base = null | boolean> {
             control = control.body;
             environment = this.env_push(frame, environment);
             kontinuation = kontinuation._k;
-            return { control, environment, store, kontinuation, meta }; }
+            return {
+              done: false,
+              value: { control, environment, store, kontinuation, meta } }};
           throw new Error('invalid continuation for function'); }
         default: finished = true; } }
     return this.continue(
@@ -232,8 +231,7 @@ export class CESKM<Base = null | boolean> {
    * @param { Kont<Base> } kontinuation
    * @param { Store<Base> } store
    * @param { Kont<Base>[] } meta
-   * @returns { null | State<Base> } A `State` if there is more work to be
-   * done, or `null` if the computation has terminated.
+   * @returns { IteratorResult<Value<Base>,State<Base>> }
    * @remarks This method tries to apply the current continuation to a value.
    */
   private continue(
@@ -241,9 +239,9 @@ export class CESKM<Base = null | boolean> {
     kontinuation: Kont<Base>,
     store: Store<Base>,
     meta: Kont<Base>[]
-  ): State<Base> | null {
+  ): IteratorResult<State<Base>,Value<Base>> {
     let finished = false;
-    let final: State<Base> | null = null;
+    let final: IteratorResult<State<Base>,Value<Base>> | undefined;
     while (!finished) {
       // update each "val" with corresp. "actual_val" and then loop
       if ("_args" in kontinuation) {
@@ -267,20 +265,25 @@ export class CESKM<Base = null | boolean> {
         _env = this.env_push(frame, _env);
         store = this.store_bind(store, addr, val);
         final = {
-          control: _exp,
-          environment: _env,
-          store,
-          kontinuation: _k,
-          meta };
+          done: false,
+          value: {
+            control: _exp,
+            environment: _env,
+            store,
+            kontinuation: _k,
+            meta } };
         finished = true; }
       else {
         if (0 === meta.length) {
-          this.result = val;
-          final = null;
+          final = {
+            done: true,
+            value: val
+          };
           finished = true; }
         else {
           const k: Kont<Base> = meta.shift() || topk();
           kontinuation = k; } } }
+    if ("undefined" === typeof final) { throw new Error(""); }
     return final; }
 
   /**

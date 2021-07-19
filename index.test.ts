@@ -13,11 +13,14 @@ class DebugMachine<Val> extends CESKM<Val> {
 
   public run(program: string): Value<Val> {
     let st: State<Val> = this.make_initial_state(parse_cbpv(program));
-    while (!this.result) {
+    let result: Value<Val> | undefined;
+    while (!result) {
       const res = this.step(JSON.parse(JSON.stringify((st))));
-      if (!this.result) {
-        st = <State<Val>>res; }}
-    return this.result; }
+      if (!res.done) {
+        st = res.value as State<Val>; }
+      else {
+        result = res.value as Value<Val>; }}
+    return result; }
 
   protected literal(v: Val): Value<Val> {
     if ("number" === typeof v

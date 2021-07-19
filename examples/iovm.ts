@@ -83,13 +83,15 @@ class VM extends CESKM<Val> {
     yield ceskm;
     const fd = open_stdin();
     this.stdin = file_lines_gen(fd);
-    while (null === this.result) {
-      const value_or_state : null | State<Val> = this.step(ceskm);
-      if (value_or_state)
-        { ceskm = yield (value_or_state as State<Val>); }
+    let iter : IteratorResult<State<Val>,Value<Val>> = this.step(ceskm);
+    while (!iter.done) {
+      ceskm = yield (iter.value as State<Val>);
+      iter = this.step(ceskm);
+      iter.done = iter.done ?? false;
     }
     closeSync(fd);
-    return this.result;
+    if (!iter) { throw new Error(""); }
+    return iter.value as Value<Val>;
   }
 
   // eslint-disable-next-line
