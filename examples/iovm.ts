@@ -317,5 +317,5 @@ while (!iter.done) {
 if (!iter.done) {
   throw new Error("");
 }
-let filtered: Partial<Value<Val>> = { ...iter.value };
+const filtered: Partial<Value<Val>> = { ...iter.value };
 console.log("result", JSON.stringify(filtered, null, 2));

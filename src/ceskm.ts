@@ -242,7 +242,7 @@ export class CESKM<Base = null | boolean> {
             };
           }
           else {
-            return this.continue(val, kontinuation, store, meta)!;
+            return this.continue(val, kontinuation, store, meta);
           }
         }
         case "cbpv_abstract": {
