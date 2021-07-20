@@ -73,29 +73,29 @@ function *file_lines_gen(fd: number): Generator<string,void,boolean> {
 
 
 /* In addition to closures, the universe of values our VM will compute with. */
-type Val = string | number | boolean | null ;
+type Base = string | number | boolean | null ;
 
-class VM extends CESKM<Val> {
+class VM extends CESKM<Base> {
   private stdin: Generator<string,void,boolean> | undefined;
 
-  public *run(program: string): Generator<State<Val>,Value<Val>,State<Val>> {
-    let ceskm : State<Val> = this.make_initial_state(parse_cbpv(program));
+  public *run(program: string): Generator<State<Base>,Value<Base>,State<Base>> {
+    let ceskm : State<Base> = this.make_initial_state(parse_cbpv(program));
     yield ceskm;
     const fd = open_stdin();
     this.stdin = file_lines_gen(fd);
-    let iter : IteratorResult<State<Val>,Value<Val>> = this.step(ceskm);
+    let iter : IteratorResult<State<Base>,Value<Base>> = this.step(ceskm);
     while (!iter.done) {
-      ceskm = yield (iter.value as State<Val>);
+      ceskm = yield (iter.value as State<Base>);
       iter = this.step(ceskm);
       iter.done = iter.done ?? false;
     }
     closeSync(fd);
     if (!iter) { throw new Error(""); }
-    return iter.value as Value<Val>;
+    return iter.value as Value<Base>;
   }
 
   // eslint-disable-next-line
-  protected literal(v: any): Value<Val> {
+  protected literal(v: any): Value<Base> {
     if ("number" === typeof v
      || "boolean" === typeof v
      || "string" === typeof v
@@ -104,7 +104,7 @@ class VM extends CESKM<Val> {
     throw new Error(`${v} not a literal we can do anything with :(`);
   }
 
-  protected op(op_sym: string, args: Value<Val>[]): Value<Val> {
+  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
     switch (op_sym) {
       case "op:mul": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
@@ -112,7 +112,7 @@ class VM extends CESKM<Val> {
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         const result: unknown = args[0].v * args[1].v;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:add": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
@@ -120,7 +120,7 @@ class VM extends CESKM<Val> {
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         const result: unknown = args[0].v + args[1].v;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:sub": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
@@ -128,7 +128,7 @@ class VM extends CESKM<Val> {
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         const result: unknown = args[0].v - args[1].v;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:eq": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -140,7 +140,7 @@ class VM extends CESKM<Val> {
           throw new Error(`arguments must be numbers or booleans or strings`);
         }
         const result: unknown = args[0].v === args[1].v;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:lt": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -150,7 +150,7 @@ class VM extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v < args[1].v;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:lte": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -160,7 +160,7 @@ class VM extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v <= args[1].v;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:concat": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -170,7 +170,7 @@ class VM extends CESKM<Val> {
           throw new Error(`arguments must be strings`);
         }
         const result: unknown = args[0].v.concat(args[1].v);
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:strlen": {
         if (! ("v" in args[0])) {
@@ -180,7 +180,7 @@ class VM extends CESKM<Val> {
           throw new Error(`argument must be a string`);
         }
         const result: unknown = args[0].v.length;
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:substr": {
         if (! ("v" in args[0]) || ! ("v" in args[1]) || ! ("v" in args[2])) {
@@ -191,7 +191,7 @@ class VM extends CESKM<Val> {
           throw new Error(`arguments must be strings`);
         }
         const result: unknown = args[0].v.slice(args[1].v,args[2].v);
-        return scalar(result as Val);
+        return scalar(result as Base);
       }
       case "op:str->num": {
         if (! ("v" in args[0])) {
@@ -200,7 +200,7 @@ class VM extends CESKM<Val> {
         if ("string" !== typeof args[0].v) {
           throw new Error(`argument must be a string: ${args[0].v}`);
         }
-        return scalar(parseInt(args[0].v as string) as Val);
+        return scalar(parseInt(args[0].v as string) as Base);
       }
       case "op:num->str": {
         if (! ("v" in args[0])) {
@@ -209,7 +209,7 @@ class VM extends CESKM<Val> {
         if ("number" !== typeof args[0].v) {
           throw new Error(`argument must be a number: ${args[0].v}`);
         }
-        return scalar((args[0].v as number).toString() as Val);
+        return scalar((args[0].v as number).toString() as Base);
       }
       case "op:puts": {
         if (! ("v" in args[0])) {
@@ -226,7 +226,7 @@ class VM extends CESKM<Val> {
         { throw new Error(`stdin is out of order!`); }
         const iter = this.stdin.next();
         if (!iter.done) {
-          return scalar(iter.value as Val);
+          return scalar(iter.value as Base);
         }
         throw new Error(`stdin is closed for good.`);
       }
@@ -304,7 +304,7 @@ const execution = vm.run(`
   ((? return) p))))))))
 )
 `);
-let iter: IteratorResult<State<Val>,Value<Val>> = execution.next();
+let iter: IteratorResult<State<Base>,Value<Base>> = execution.next();
 while (!iter.done) {
   try {
     iter = execution.next({ ...iter.value  });
@@ -317,5 +317,5 @@ while (!iter.done) {
 if (!iter.done) {
   throw new Error("");
 }
-const filtered: Partial<Value<Val>> = { ...iter.value };
+const filtered: Partial<Value<Base>> = { ...iter.value };
 console.log("result", JSON.stringify(filtered, null, 2));
