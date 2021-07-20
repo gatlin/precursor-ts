@@ -2,7 +2,8 @@ import {
   CESKM,
   Value,
   State,
-  parse_cbpv
+  parse_cbpv,
+  scalar
 } from "./src/index";
 import { test } from "tap";
 
@@ -13,11 +14,14 @@ class DebugMachine<Val> extends CESKM<Val> {
 
   public run(program: string): Value<Val> {
     let st: State<Val> = this.make_initial_state(parse_cbpv(program));
-    while (!this.result) {
+    let result: Value<Val> | undefined;
+    while (!result) {
       const res = this.step(JSON.parse(JSON.stringify((st))));
-      if (!this.result) {
-        st = <State<Val>>res; }}
-    return this.result; }
+      if (!res.done) {
+        st = res.value as State<Val>; }
+      else {
+        result = res.value as Value<Val>; }}
+    return result; }
 
   protected literal(v: Val): Value<Val> {
     if ("number" === typeof v
@@ -26,6 +30,7 @@ class DebugMachine<Val> extends CESKM<Val> {
       { return { v }; }
     throw new Error(`${v} not a primitive value`);
   }
+
   protected op(op_sym: string, args: Value<Val>[]): Value<Val> {
     switch (op_sym) {
       case "op:mul": {
@@ -34,7 +39,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         const result: unknown = args[0].v * args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:add": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
@@ -42,7 +47,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         const result: unknown = args[0].v + args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:sub": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
@@ -50,7 +55,7 @@ class DebugMachine<Val> extends CESKM<Val> {
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         const result: unknown = args[0].v - args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:div": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -60,7 +65,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v / args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:mod": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -70,7 +75,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v % args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:eq": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -81,7 +86,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers or booleans`);
         }
         const result: unknown = args[0].v === args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:lt": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -91,7 +96,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v < args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:lte": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -101,7 +106,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v <= args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:gt": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -111,7 +116,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v > args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:gte": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -121,7 +126,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be numbers`);
         }
         const result: unknown = args[0].v >= args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:and": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -131,7 +136,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be booleans`);
         }
         const result: unknown = args[0].v && args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:or": {
         if (! ("v" in args[0]) || ! ("v" in args[1])) {
@@ -141,7 +146,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`arguments must be booleans`);
         }
         const result: unknown = args[0].v || args[1].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       case "op:not": {
         if (! ("v" in args[0]) ) {
@@ -151,7 +156,7 @@ class DebugMachine<Val> extends CESKM<Val> {
           throw new Error(`argument must be a boolean`);
         }
         const result: unknown = !args[0].v;
-        return { v: result as Val };
+        return scalar(result as Val);
       }
       default: return super.op(op_sym, args);
     }

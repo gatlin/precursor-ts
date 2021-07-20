@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/cjs/index.js",
@@ -14,10 +14,12 @@
   "postinstall": "npm run build",
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-esm.json",
-    "coverage": "jest --coverage",
+    "clean": "rimraf dist",
+    "coverage": "tap --ts **/*.test.ts",
+    "format": "prettierx --config ./.prettierrc --offset-ternary-expressions --write src/**/{ceskm,grammar}.ts",
     "lint": "eslint . --fix --ext .ts",
-    "test": "tap --ts --no-coverage **/*.test.ts",
     "prepublishOnly": "npm run build",
+    "test": "tap --ts --no-coverage **/*.test.ts",
     "examples": "ts-node examples/iovm"
   },
   "devDependencies": {
@@ -26,8 +28,9 @@
     "@typescript-eslint/eslint-plugin": "^4.21.0",
     "@typescript-eslint/parser": "^4.21.0",
     "eslint": "^7.24.0",
+    "prettierx": "^0.19.0",
+    "rimraf": "^3.0.2",
     "tap": "^15.0.9",
-    "ts-jest": "^26.5.1",
     "ts-node": "^9.1.1",
     "typescript": "^4.1.3"
   }

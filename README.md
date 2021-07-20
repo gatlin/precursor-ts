@@ -1,7 +1,7 @@
 # precursor-ts
 
 Precursor is a small, experimental programming language implemented as a pure
-TypeScript (or pure JavaScript) library.
+TypeScript (and hence, JavaScript) library.
 
 You can read more details below in the *synopsis*, you can see a working example
 (with I/O!) in `examples/iovm.ts`, and you can even
@@ -42,7 +42,7 @@ the box":
 [sexprarticle]: https://en.wikipedia.org/wiki/S-expression
 
 You can see examples of the syntax parsed by the default parser in
-`__tests__/index.test.ts`.
+[the tests](index.test.ts).
 
 ## example
 
@@ -69,8 +69,8 @@ class ExampleMachine extends CESKM<Val> {
     let st: State<Val> = this.make_initial_state(parse_cbpv(program));
     while (!this.result) {
       const res = this.step(st);
-      if (!this.result) {
-        st = res as State<Val>; }}
+      if (!res.done) {
+        st = res.value as State<Val>; }}
     return this.result; }
 ```
 
