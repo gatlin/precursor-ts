@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/cjs/index.js",
@@ -9,10 +9,10 @@
     "./dist/"
   ],
   "types": "./dist/cjs/index.d.ts",
-  "private": true,
   "license": "GPL-3",
   "postinstall": "npm run build",
   "scripts": {
+    "prebuild": "npm run clean && npm run format && echo Using TypeScript && tsc --version",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-esm.json",
     "clean": "rimraf dist",
     "coverage": "tap --ts **/*.test.ts",
