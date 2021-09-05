@@ -6,6 +6,7 @@
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "files": [
+    "src/**/*",
     "./dist/"
   ],
   "types": "./dist/cjs/index.d.ts",
