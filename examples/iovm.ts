@@ -79,7 +79,7 @@ class VM extends CESKM<Base> {
   private stdin: Generator<string,void,boolean> | undefined;
 
   public *run(program: string): Generator<State<Base>,Value<Base>,State<Base>> {
-    let ceskm : State<Base> = this.make_initial_state(parse_cbpv(program));
+    let ceskm : State<Base> = this.inject(parse_cbpv(program));
     yield ceskm;
     const fd = open_stdin();
     this.stdin = file_lines_gen(fd);

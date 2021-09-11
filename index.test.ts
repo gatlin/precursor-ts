@@ -1,7 +1,6 @@
 import {
   CESKM,
   Value,
-  State,
   parse_cbpv,
   scalar
 } from "./src/index";
@@ -13,15 +12,12 @@ type Val = number | boolean | null ;
 class DebugMachine<Val> extends CESKM<Val> {
 
   public run(program: string): Value<Val> {
-    let st: State<Val> = this.make_initial_state(parse_cbpv(program));
-    let result: Value<Val> | undefined;
-    while (!result) {
-      const res = this.step(JSON.parse(JSON.stringify((st))));
-      if (!res.done) {
-        st = res.value as State<Val>; }
-      else {
-        result = res.value as Value<Val>; }}
-    return result; }
+    let result = this.step(this.inject(parse_cbpv(program)));
+    while (!result.done) {
+      result = this.step(result.value);
+    }
+    return result.value;
+  }
 
   protected literal(v: Val): Value<Val> {
     if ("number" === typeof v
