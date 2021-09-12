@@ -313,7 +313,7 @@ type State<T> = {
  * The CESKM virtual machine.
  *
  * The chief export is the {@link CESKM.step | transition step} implementation,
- * which sub-classes will use as a building-block in their evaluation strategy.
+ * which a sub-class will use as a building-block in its evaluation strategy.
  *
  * @remarks
  * The machine can only perform the operations it defines, so sub-classes will
@@ -321,7 +321,6 @@ type State<T> = {
  * If your machine is to manipulate values of types other than `boolean` or
  * `null`, you will also need to override {@link CESKM.literal} to map term
  * literals to primitive machine values.
- *
  * @example
  * ```typescript
  * type Base = boolean | null | string | number;
@@ -349,7 +348,6 @@ type State<T> = {
  *   }
  * }
  * ```
- *
  * @typeParam Base - The types which may be {@link Store | stored} and
  * {@link CESKM.op | operated} on by your programs.
  * @category VM
@@ -654,15 +652,14 @@ class CESKM<Base = null | boolean> {
       }
       else if ("_let" in kontinuation) {
         const { _let, _exp, _k } = kontinuation;
-        if (1 !== _let.length) {
-          throw new Error(`invalid # of args for letk: ${_let.length}`);
-        }
         let { _env } = kontinuation;
         let frame: Env = this.env_empty();
-        const addr: string = this.gensym();
-        frame = frame.bind(_let[0], addr);
+        for (let i = 0; i < _let.length; i++) {
+          const addr: string = this.gensym();
+          frame = frame.bind(_let[i], addr);
+          store = this.store_bind(store, addr, val);
+        }
         _env = this.env_push(frame, _env);
-        store = this.store_bind(store, addr, val);
         final = {
           done: false,
           value: {
