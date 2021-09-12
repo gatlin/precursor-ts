@@ -19,38 +19,33 @@ Licensed under the `GPL-3` where it can be, and the `WTFPL` elsewhere.
 
 # build and install from source
 
-You can run tests and build the Javascript distribution from the typescript -
-and, in fact, must - simply by running:
-
-## dependencies and tests
+## install dependencies and run tests
 
 ```shell
-$> nvm use # the author recommends nvm!
-$> npm i   # install dependencies
-$> npm t   # run tests
-$> npm run coverage # run tests with coverage
+nvm use # the author recommends nvm!
+npm i   # install dependencies
+npm t   # run tests
+npm run coverage # run tests with coverage
 ```
 
-## actually building it
+## build the javascript distribution
 
 ```shell
-$> npm run build
+npm run build
 ```
 
 This produces two versions of the library, one each for CommonJS and ES
 modules:
 
 ```shell
-$> ls dist/cjs # or dist/esm, same file names
+ls dist/cjs # or dist/esm, same file names
 ceskm.d.ts  ceskm.js  grammar.d.ts  grammar.js  index.d.ts  index.js  parser.d.ts  parser.js
 ```
 
-## documentation site
-
-To build the documentation site from the source documentation,
+## build the documentation site
 
 ```shell
-$> npm run docs
+npm run docs
 ```
 
 # synopsis

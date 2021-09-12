@@ -90,7 +90,7 @@ class Env {
  * @remarks
  * While it is indeed the top-level continutation one notes that its place is
  * at the *bottom* of the continuation / call stack.
- * @see {@link Kont | Continuation data structures.}
+ * @see {@link Kont | Continuations}
  * @see {@link topk}
  * @category Continuations & Values
  * @internal
