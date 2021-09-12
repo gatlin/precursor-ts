@@ -110,7 +110,7 @@ const topk = (): Top => ({});
  * Argument continuation: pushed by applications, popped by abstractions.
  * @example
  * ```
- * (reset    (  (shift k k)  1 #f  )    )
+ * (reset ( (shift k k)  1 #f ))
  * ```
  * @example
  * ```json
@@ -148,7 +148,7 @@ class Args<T> {
  * Let-continuation: pushed onto the stack by a `let` expression.
  * @example
  * ```
- * (reset    (let x (shift k k) x)    )
+ * (reset (let x (shift k k) x) )
  * ```
  * @example
  * ```json
@@ -167,9 +167,11 @@ class Args<T> {
  * }
  * ```
  * @remarks
- * Captures an {@link Cbpv | expression} with free variables with a (possibly
- * empty) {@link Env}, and potentially still further variables which are
- * explicitly bound and need values before the expression may be evaluated.
+ * A let-binding consists of *two* expressions to be evaluated: the result of
+ * the first will be bound to some symbol, which will then be used to evaluate
+ * the second.
+ * The let-continuation records the remaining work to be done while evaluating
+ * the first expression.
  * @see {@link Kont}
  * @see {@link Value}
  * @see {@link closure}
@@ -355,34 +357,43 @@ type State<T> = {
  */
 class CESKM<Base = null | boolean> {
   /**
-   * Monotonically increasing number used to generate unique identifiers.
-   * @internal
-   */
-  protected gensym_count = 0;
-
-  /**
-   * Constructs a fresh {@link State}.
-   * @param control - The {@link Cbpv} expression we are to evaluate.
-   * @returns An initial state suitable for evaluation.
-   * @see {@link CESKM.step}
+   * @example
+   * ```typescript
+   * type Base = number | boolean | string | null;
+   * class VM extends CESKM<Base> {
+   *   // ...
+   *   protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+   *     switch (op_sym) {
+   *       case "op:add": {
+   *         if (! ("v" in args[0]) || ! ("v" in args[1]))
+   *           { throw new Error(`arguments must be values`); }
+   *         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+   *           { throw new Error(`arguments must be numbers`); }
+   *         const result: unknown = args[0].v + args[1].v;
+   *         return scalar(result as Val);
+   *       }
+   *       // ...
+   *       default: return super.op(op_sym, args);
+   *     }
+   *   }
+   * }
+   * ```
+   * @remarks
+   * This method is protected expressly so that sub-classes may define
+   * custom operators (indeed that is a primary motivation for
+   * sub-classes).
+   * @param op_sym - the symbol for the primitive operator.
+   * @param args - the values passed to the operator.
+   * @category Evaluation
    * @public
+   * @virtual
    */
-  protected inject(control: Cbpv): State<Base> {
-    return {
-      control,
-      environment: this.env_empty(),
-      store: this.store_empty(),
-      kontinuation: topk(),
-      meta: []
-    };
-  }
-
-  /**
-   * @returns A freshly **gen**erated **sym**bol. Multi-purpose.
-   * @internal
-   */
-  protected gensym(): string {
-    return `#sym<${this.gensym_count++}>`;
+  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+    let s = "";
+    for (const arg of args) {
+      s += ` ${"v" in arg ? typeof arg.v : "unknown"}`;
+    }
+    throw new Error(`bad op or arguments: ${op_sym} - ${s}`);
   }
 
   /**
@@ -402,140 +413,12 @@ class CESKM<Base = null | boolean> {
    * ```
    * @param v - A term intended to represent a literal value.
    * @returns A value representation of the syntactic literal.
+   * @category Evaluation
    * @public
    * @virtual
    */
   protected literal(v: Base): Value<Base> {
     return closure(cbpv_lit(v), this.env_empty());
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Env} interface so sub-classes may extend that type to
-   * change environment behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected env_lookup(sym: string, env: Env): string | Cbpv {
-    const addr_or_expr = env.lookup(sym);
-    if (null === addr_or_expr) {
-      throw new Error(`Unbound symbol: ${sym}`);
-    }
-    return addr_or_expr;
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Env} interface so sub-classes may extend that type to
-   * change environment behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected env_push(frame: Env, env: Env): Env {
-    return env.merge(frame);
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Env} interface so sub-classes may extend that type to
-   * change environment behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected env_empty(): Env {
-    return new Env();
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Store} interface so sub-classes may extend that type to
-   * change storage behavior.
-   * {@link Store}.
-   * @category Environment & Store
-   * @internal
-   */
-  protected store_bind(
-    sto: Store<Base>,
-    addr: string,
-    value: Value<Base>
-  ): Store<Base> {
-    return sto.bind(addr, value);
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Store} interface so sub-classes may extend that type to
-   * change storage behavior.
-   * {@link Store}.
-   * @category Environment & Store
-   * @internal
-   */
-  protected store_lookup(sto: Store<Base>, addr: string): Value<Base> {
-    const result: Value<Base> = sto.lookup(addr);
-    return result;
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Store} interface so sub-classes may extend that type to
-   * change storage behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected store_empty(): Store<Base> {
-    return new Store();
-  }
-
-  /**
-   * Evaluates a positive {@link Cbpv | expression} to an irreducible
-   * {@link Value}.
-   * @param expr - The positive expression we are evaluating.
-   * @param env - A static environment to bind any free variables.
-   * @param store - A backing {@link Value} storage.
-   * @returns The term as a positive {@link Value}, suspended if necessary.
-   * @throws Error
-   * If the expression isn't positive.
-   * @internal
-   */
-  private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
-    let finished = false;
-    while (!finished) {
-      switch (expr.tag) {
-        case "cbpv_literal":
-          return this.literal(expr.v);
-        case "cbpv_symbol": {
-          if ("_" === expr.v) {
-            return continuation(topk());
-          }
-          else {
-            const addr_or_val: string | Cbpv = this.env_lookup(expr.v, env);
-            return "string" === typeof addr_or_val
-              ? this.store_lookup(store, addr_or_val as string)
-              : closure(addr_or_val as Cbpv, env);
-          }
-          break;
-        }
-        case "cbpv_suspend": {
-          const { exp: cexp } = expr;
-          if (!cbpv_is_positive(cexp)) {
-            return closure(cexp, env);
-          }
-          else {
-            expr = cexp;
-            break;
-          }
-        }
-        case "cbpv_op": {
-          return this.op(
-            expr.op,
-            expr.erands.map((erand: Cbpv) => this.positive(erand, env, store))
-          );
-        }
-        default:
-          finished = true;
-      }
-    }
-    throw new Error(`Invalid positive term: ${JSON.stringify(expr)}`);
   }
 
   /**
@@ -557,6 +440,7 @@ class CESKM<Base = null | boolean> {
    * @param state - The {@link State} from which we are starting.
    * @returns An `IteratorResult` of either `State<Base>` (not done), or
    * `Value<Base>` (done).
+   * @category Evaluation
    * @public
    * @sealed
    */
@@ -673,6 +557,61 @@ class CESKM<Base = null | boolean> {
   }
 
   /**
+   * Evaluates a positive {@link Cbpv | expression} to an irreducible
+   * {@link Value}.
+   * @remarks
+   * @param expr - The positive expression we are evaluating.
+   * @param env - A static environment to bind any free variables.
+   * @param store - A backing {@link Value} storage.
+   * @returns The term as a positive {@link Value}, suspended if necessary.
+   * @throws Error
+   * If the expression isn't positive.
+   * @category Evaluation
+   * @internal
+   * @sealed
+   */
+  private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
+    let finished = false;
+    while (!finished) {
+      switch (expr.tag) {
+        case "cbpv_literal":
+          return this.literal(expr.v);
+        case "cbpv_symbol": {
+          if ("_" === expr.v) {
+            return continuation(topk());
+          }
+          else {
+            const addr_or_val: string | Cbpv = this.env_lookup(expr.v, env);
+            return "string" === typeof addr_or_val
+              ? this.store_lookup(store, addr_or_val as string)
+              : closure(addr_or_val as Cbpv, env);
+          }
+          break;
+        }
+        case "cbpv_suspend": {
+          const { exp: cexp } = expr;
+          if (!cbpv_is_positive(cexp)) {
+            return closure(cexp, env);
+          }
+          else {
+            expr = cexp;
+            break;
+          }
+        }
+        case "cbpv_op": {
+          return this.op(
+            expr.op,
+            expr.erands.map((erand: Cbpv) => this.positive(erand, env, store))
+          );
+        }
+        default:
+          finished = true;
+      }
+    }
+    throw new Error(`Invalid positive term: ${JSON.stringify(expr)}`);
+  }
+
+  /**
    * This method tries to apply the current continuation to a value, which we
    * know is positive.
    * @remarks
@@ -686,7 +625,9 @@ class CESKM<Base = null | boolean> {
    * @param meta - A stack (LIFO) of {@link Kont | continuations}.
    * @returns An `IteratorResult`: either `Value<Base>` if `done`, else
    * `State<Base>`.
+   * @category Evaluation
    * @internal
+   * @sealed
    */
   private continue(
     val: Value<Base>,
@@ -755,42 +696,112 @@ class CESKM<Base = null | boolean> {
   }
 
   /**
-   * @example
-   * ```typescript
-   * type Base = number | boolean | string | null;
-   * class VM extends CESKM<Base> {
-   *   // ...
-   *   protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
-   *     switch (op_sym) {
-   *       case "op:add": {
-   *         if (! ("v" in args[0]) || ! ("v" in args[1]))
-   *           { throw new Error(`arguments must be values`); }
-   *         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
-   *           { throw new Error(`arguments must be numbers`); }
-   *         const result: unknown = args[0].v + args[1].v;
-   *         return scalar(result as Val);
-   *       }
-   *       // ...
-   *       default: return super.op(op_sym, args);
-   *     }
-   *   }
-   * }
-   * ```
-   * @remarks
-   * This method is protected expressly so that sub-classes may define
-   * custom operators (indeed that is a primary motivation for
-   * sub-classes).
-   * @param op_sym - the symbol for the primitive operator.
-   * @param args - the values passed to the operator.
+   * Constructs a fresh {@link State}.
+   * @param control - The {@link Cbpv} expression we are to evaluate.
+   * @returns An initial state suitable for evaluation.
+   * @see {@link CESKM.step}
+   * @category Evaluation
    * @public
-   * @virtual
    */
-  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
-    let s = "";
-    for (const arg of args) {
-      s += ` ${"v" in arg ? typeof arg.v : "unknown"}`;
+  protected inject(control: Cbpv): State<Base> {
+    return {
+      control,
+      environment: this.env_empty(),
+      store: this.store_empty(),
+      kontinuation: topk(),
+      meta: []
+    };
+  }
+
+  /**
+   * Monotonically increasing number used to generate unique identifiers.
+   * @internal
+   */
+  protected gensym_count = 0;
+
+  /**
+   * @returns A freshly **gen**erated **sym**bol. Multi-purpose.
+   * @internal
+   */
+  protected gensym(): string {
+    return `#sym<${this.gensym_count++}>`;
+  }
+
+  /**
+   * @remarks
+   * Uses the {@link Env} interface so sub-classes may extend that type to
+   * change environment behavior.
+   * @category Environment & Store
+   * @internal
+   */
+  protected env_lookup(sym: string, env: Env): string | Cbpv {
+    const addr_or_expr = env.lookup(sym);
+    if (null === addr_or_expr) {
+      throw new Error(`Unbound symbol: ${sym}`);
     }
-    throw new Error(`bad op or arguments: ${op_sym} - ${s}`);
+    return addr_or_expr;
+  }
+
+  /**
+   * @remarks
+   * Uses the {@link Env} interface so sub-classes may extend that type to
+   * change environment behavior.
+   * @category Environment & Store
+   * @internal
+   */
+  protected env_push(frame: Env, env: Env): Env {
+    return env.merge(frame);
+  }
+
+  /**
+   * @remarks
+   * Uses the {@link Env} interface so sub-classes may extend that type to
+   * change environment behavior.
+   * @category Environment & Store
+   * @internal
+   */
+  protected env_empty(): Env {
+    return new Env();
+  }
+
+  /**
+   * @remarks
+   * Uses the {@link Store} interface so sub-classes may extend that type to
+   * change storage behavior.
+   * {@link Store}.
+   * @category Environment & Store
+   * @internal
+   */
+  protected store_bind(
+    sto: Store<Base>,
+    addr: string,
+    value: Value<Base>
+  ): Store<Base> {
+    return sto.bind(addr, value);
+  }
+
+  /**
+   * @remarks
+   * Uses the {@link Store} interface so sub-classes may extend that type to
+   * change storage behavior.
+   * {@link Store}.
+   * @category Environment & Store
+   * @internal
+   */
+  protected store_lookup(sto: Store<Base>, addr: string): Value<Base> {
+    const result: Value<Base> = sto.lookup(addr);
+    return result;
+  }
+
+  /**
+   * @remarks
+   * Uses the {@link Store} interface so sub-classes may extend that type to
+   * change storage behavior.
+   * @category Environment & Store
+   * @internal
+   */
+  protected store_empty(): Store<Base> {
+    return new Store();
   }
 }
 
