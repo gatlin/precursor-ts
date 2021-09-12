@@ -258,8 +258,6 @@ const scalar = <T>(v: T): Value<T> => ({ v });
 const closure = <T>(_exp: Cbpv, _env: Env): Value<T> =>
   continuation(new Let<T>([], _exp, _env, topk()));
 
-/* Finally, the store */
-
 /**
  * Maps string-typed addresses to physical values manipulated by the machine.
  * @typeParam T - The underlying TypeScript type forming the basis of values in
@@ -318,7 +316,7 @@ type State<T> = {
  * The CESKM virtual machine.
  *
  * The focal point is the {@link CESKM.step | transition step} implementation,
- * which a sub-class will use as a building-block in its evaluation strategy.
+ * which a sub-class will use as a building-block in its evaluation algorithm.
  *
  * @remarks
  * The machine can only perform the operations it defines, so sub-classes will
