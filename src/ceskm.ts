@@ -573,7 +573,7 @@ class CESKM<Base = null | boolean> {
     while (!finished) {
       switch (expr.tag) {
         case "cbpv_literal":
-          return this.literal(expr.v);
+          return this.literal(expr.v as Base);
         case "cbpv_symbol": {
           if ("_" === expr.v) {
             return continuation(topk());

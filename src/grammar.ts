@@ -16,7 +16,7 @@
  * Call-By-Push-Value intermediate language.
  */
 type Cbpv =
-  | { tag: "cbpv_literal"; v: any }
+  | { tag: "cbpv_literal"; v: unknown }
   | { tag: "cbpv_symbol"; v: string }
   | { tag: "cbpv_op"; op: string; erands: Cbpv[] }
   | { tag: "cbpv_suspend"; exp: Cbpv }
