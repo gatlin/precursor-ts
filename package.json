@@ -19,8 +19,13 @@
     "format": "prettierx --config ./.prettierrc --offset-ternary-expressions --write src/**/{ceskm,grammar}.ts",
     "lint": "eslint . --fix --ext .ts",
     "prepublishOnly": "npm run build",
+    "prepare": "npm run build",
     "test": "tap --ts --no-coverage **/*.test.ts",
     "examples": "ts-node examples/iovm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gatlin/precursor-ts.git"
   },
   "devDependencies": {
     "@types/node": "^14.14.13",
