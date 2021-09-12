@@ -558,7 +558,6 @@ class CESKM<Base = null | boolean> {
   /**
    * Evaluates a positive {@link Cbpv | expression} to an irreducible
    * {@link Value}.
-   * @remarks
    * @param expr - The positive expression we are evaluating.
    * @param env - A static environment to bind any free variables.
    * @param store - A backing {@link Value} storage.
@@ -700,6 +699,7 @@ class CESKM<Base = null | boolean> {
    * @see {@link CESKM.step}
    * @category Evaluation
    * @public
+   * @sealed
    */
   protected inject(control: Cbpv): State<Base> {
     return {
