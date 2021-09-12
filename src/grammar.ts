@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * Defines a JSON-based *call-by-push-value* language.
  *
@@ -29,7 +28,7 @@ type Cbpv =
   | { tag: "cbpv_shift"; karg: string; body: Cbpv }
   | { tag: "cbpv_if"; c: Cbpv; t: Cbpv; e: Cbpv };
 
-const cbpv_lit = (v: any): Cbpv => ({ tag: "cbpv_literal", v });
+const cbpv_lit = (v: unknown): Cbpv => ({ tag: "cbpv_literal", v });
 const cbpv_sym = (v: string): Cbpv => ({ tag: "cbpv_symbol", v });
 const cbpv_op = (op: string, erands: Cbpv[]): Cbpv => ({
   tag: "cbpv_op",
