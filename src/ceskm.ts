@@ -414,7 +414,7 @@ class CESKM<Base = null | boolean> {
    * @virtual
    */
   protected literal(v: Base): Value<Base> {
-    return closure(cbpv_lit(v), new Env());
+    return closure(cbpv_lit(v), this.empty_env());
   }
 
   /**
@@ -462,7 +462,7 @@ class CESKM<Base = null | boolean> {
           break;
         }
         case "cbpv_letrec": {
-          let frame = new Env();
+          let frame = this.empty_env();
           for (const binding of control.bindings) {
             frame = frame.bind(binding[0] as string, binding[1] as Cbpv);
           }
@@ -473,7 +473,7 @@ class CESKM<Base = null | boolean> {
         case "cbpv_shift": {
           const addr: string = this.gensym();
           const cc: Kont<Base> = kontinuation;
-          let frame = new Env();
+          let frame = this.empty_env();
           frame = frame.bind(control.karg, addr);
           environment = environment.merge(frame);
           control = control.body;
@@ -524,7 +524,7 @@ class CESKM<Base = null | boolean> {
         }
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
-            let frame = new Env();
+            let frame = this.empty_env();
             for (let i = 0; i < control.args.length; i++) {
               const addr: string = this.gensym();
               store = store.bind(addr, kontinuation._args[i]);
@@ -651,7 +651,7 @@ class CESKM<Base = null | boolean> {
       else if ("_let" in kontinuation) {
         const { _let, _exp, _k } = kontinuation;
         let { _env } = kontinuation;
-        let frame: Env = new Env();
+        let frame: Env = this.empty_env();
         for (let i = 0; i < _let.length; i++) {
           const addr: string = this.gensym();
           frame = frame.bind(_let[i], addr);
@@ -701,8 +701,8 @@ class CESKM<Base = null | boolean> {
   protected inject(control: Cbpv): State<Base> {
     return {
       control,
-      environment: new Env(),
-      store: new Store(),
+      environment: this.empty_env(),
+      store: this.empty_store(),
       kontinuation: topk(),
       meta: []
     };
@@ -720,6 +720,24 @@ class CESKM<Base = null | boolean> {
    */
   protected gensym(): string {
     return `#sym<${this.gensym_count++}>`;
+  }
+
+  /**
+   * Provides a way to inject custom sub-classes of {@link Env}.
+   * @virtual
+   * @public
+   */
+  protected empty_env(): Env {
+    return new Env();
+  }
+
+  /**
+   * Provides a way to inject custom sub-classes of {@link Store}.
+   * @virtual
+   * @public
+   */
+  protected empty_store(): Store<Base> {
+    return new Store();
   }
 }
 
