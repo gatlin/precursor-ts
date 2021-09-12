@@ -5,6 +5,9 @@
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
+  "files": [
+    "dist"
+  ],
   "license": "GPL-3",
   "scripts": {
     "build": "run-p build:*",
