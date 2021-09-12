@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "0.7.1",
+  "version": "1.0.0",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/cjs/index.js",
@@ -12,15 +12,20 @@
   "license": "GPL-3",
   "postinstall": "npm run build",
   "scripts": {
-    "prebuild": "npm run clean && npm run format && echo Using TypeScript && tsc --version",
+    "docs": "typedoc --readme none",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-esm.json",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist && rimraf docs",
     "coverage": "tap --ts **/*.test.ts",
     "format": "prettierx --config ./.prettierrc --offset-ternary-expressions --write src/**/{ceskm,grammar}.ts",
     "lint": "eslint . --fix --ext .ts",
     "prepublishOnly": "npm run build",
+    "prepare": "npm run build",
     "test": "tap --ts --no-coverage **/*.test.ts",
     "examples": "ts-node examples/iovm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gatlin/precursor-ts.git"
   },
   "devDependencies": {
     "@types/node": "^14.14.13",
@@ -28,10 +33,12 @@
     "@typescript-eslint/eslint-plugin": "^4.21.0",
     "@typescript-eslint/parser": "^4.21.0",
     "eslint": "^7.24.0",
+    "eslint-plugin-tsdoc": "^0.2.14",
     "prettierx": "^0.19.0",
     "rimraf": "^3.0.2",
     "tap": "^15.0.9",
     "ts-node": "^9.1.1",
+    "typedoc": "^0.22.1",
     "typescript": "^4.1.3"
   }
 }

@@ -1,6 +1,16 @@
 /* eslint-disable */
 /**
- * @module parser
+ * S-expression {@link Parser}.
+ *
+ * This implements a straightforward, if somewhat clunky, s-expression surface
+ * syntax parser for the {@link Cbpv} term language.
+ *
+ * @remarks
+ * Egregiously plagiarized (see notes for source) and then vivisected immorally
+ * into a TypeScript class.
+ *
+ * @see {@link https://gist.github.com/DmitrySoshnikov/2a434dda67019a4a7c37}
+ * @packageDocumentation
  */
 
 import {
@@ -20,14 +30,14 @@ import {
 } from "./grammar";
 
 /**
- * @class Parser
- * @remarks An S-expression parser. Returns arrays of arrays or atoms.
- * Egregiously plagiarized from [1], and then vivisected immorally into a
- * Typescript class.
- *
- * [1]: https://gist.github.com/DmitrySoshnikov/2a434dda67019a4a7c37
+ * Parses a string into arrays of *atoms*, or (inductively) other arrays.
+ * @remarks
+ * This is fine, clever JavaScript that works but I do not endorse how
+ * unprofessional this TypeScript conversion is. Nevertheless, it works.
+ * @category Language & Syntax
+ * @internal
  */
-export class Parser {
+class Parser {
   protected cursor = 0;
   protected ast: any[] = [];
   constructor(
@@ -136,13 +146,17 @@ export class Parser {
 }
 
 /**
- * @function build_cbpv
- * @param {any} ast A loosely-typed object representing an s-expression.
- * @returns {Cbpv} A proper CBPV syntax object fit for execution.
- * @remarks I plagiarized the s-expression parser above and so convert its
- * result into the correct form afterward.
+ * @param ast - A loosely-typed object representing an s-expression.
+ * @returns A proper {@link Cbpv} syntax object fit for execution.
+ * @throws Error
+ * If the syntax is invalid.
+ * @remarks
+ * I plagiarized the s-expression parser above and so convert its result into
+ * the correct form afterward.
+ * @category Language & Syntax
+ * @internal
  */
-export const build_cbpv = (ast: any): Cbpv => {
+const build_cbpv = (ast: any): Cbpv => {
   if (Array.isArray(ast)) {
     switch (ast[0]) {
       case 'λ':
@@ -225,12 +239,21 @@ export const build_cbpv = (ast: any): Cbpv => {
 
 /**
  * @function parse_cbpv
- * @param {string} source the source code to parse
- * @returns {Cbpv} a CBPV syntax object ready to be executed.
- * @remarks The source code is stripped of comments before parsing.
+ * @param source - The source code to parse.
+ * @returns  A {@link Cbpv } syntax object ready to be executed.
+ * @remarks
+ * The source code is stripped of comments before parsing.
+ * @category Language & Syntax
+ * @public
  */
-export const parse_cbpv = (source: string): Cbpv => {
+const parse_cbpv = (source: string): Cbpv => {
   const parser = new Parser(source);
   const cbpv = build_cbpv(parser.parse());
   return cbpv;
+};
+
+export {
+  Parser,
+  build_cbpv,
+  parse_cbpv
 };

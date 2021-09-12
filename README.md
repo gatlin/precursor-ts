@@ -11,16 +11,93 @@ You can read more details below in the *synopsis*, you can see a working example
 
 Licensed under the `GPL-3` where it can be, and the `WTFPL` elsewhere.
 
+# documentation
+
+[API documentation & examples may be found here.][precursordocs]
+
+[precursordocs]: //niltag.net/code/precursor/docs
+
 # build and install from source
 
-You can run tests and build the Javascript distribution from the typescript -
-and, in fact, must - simply by running:
+## install dependencies and run tests
 
 ```shell
-npm i
+nvm use # the author recommends nvm!
+npm i   # install dependencies
+npm t   # run tests
+npm run coverage # run tests with coverage
+```
+
+## build the javascript distribution
+
+```shell
+npm run build
+```
+
+This produces two versions of the library, one each for CommonJS and ES
+modules:
+
+```shell
+ls dist/cjs # or dist/esm, same file names
+ceskm.d.ts  ceskm.js  grammar.d.ts  grammar.js  index.d.ts  index.js  parser.d.ts  parser.js
+```
+
+## build the documentation site
+
+```shell
+npm run docs
 ```
 
 # synopsis
+
+```typescript
+import { strict as assert } from "assert";
+import { CESKM, parse_cbpv, scalar } from "precursor-ts";
+
+type Base = boolean | null | string | number;
+class VM extends CESKM<Base> {
+  public run(program: string): Value<Base> {
+    let result = this.step(this.inject(parse_cbpv(program)));
+    while (!result.done) {
+      result = this.step(result.value);
+    }
+    return result.value;
+  }
+  protected literal(v: Base): Value<Base> {
+    if ("number" === typeof v
+     || "boolean" === typeof v
+     || "string" === typeof v
+     || null === v)
+      { return scalar(v); }
+    throw new Error(`${v} not a primitive value`);
+  }
+  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+    switch (op_sym) {
+      case "op:add": {
+        if (! ("v" in args[0]) || ! ("v" in args[1]))
+          { throw new Error(`arguments must be values`); }
+        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+          { throw new Error(`arguments must be numbers`); }
+        const result: unknown = args[0].v + args[1].v;
+        return scalar(result as Base);
+      }
+      // ...
+      default: return super.op(op_sym,args);
+    }
+  }
+}
+
+const vm = new VM();
+try {
+  const three = vm.run(`
+    (op:add 1 2)
+  `);
+  assert.deepEqual(three, {
+    v: 3
+  });
+}
+catch (e) { console.error(e); }
+```
 
 ## an attempt with words
 
@@ -41,187 +118,9 @@ the box":
 [cbpvarticle]: https://en.wikipedia.org/wiki/Call-by-push-value
 [sexprarticle]: https://en.wikipedia.org/wiki/S-expression
 
-You can see examples of the syntax parsed by the default parser in
+You can see examples of the syntax parsed by the default parser, and more
+generally how to get started quickly with this library, please consult
 [the tests](index.test.ts).
-
-## example
-
-The following is an example usage of Precursor.
-We will use the parser that comes with the library, and create an evaluator
-that can compute with `number`, `boolean`, and `null` values.
-
-First, we sub-class `CESKM` and specify the values our machine can work with.
-
-```typescript
-import {
-  CESKM,
-  Value,
-  parse_cbpv // use the pre-fab s-expression parser
-} from "precursor-ts";
-
-import { strict as assert } from "assert";
-
-type Val = number | boolean | null ;
-
-class ExampleMachine extends CESKM<Val> {
-
-  public run(program: string): Value<Val> {
-    let st: State<Val> = this.make_initial_state(parse_cbpv(program));
-    while (!this.result) {
-      const res = this.step(st);
-      if (!res.done) {
-        st = res.value as State<Val>; }}
-    return this.result; }
-```
-
-Now we must override the methods `literal` and `op`.
-
-`literal` defines how "literal" values are to be converted into `Value`s.
-A literal is something like a number (eg, `42`), `"doubly quoted string"`, or
-boolean `#t`rue `#f`alse symbols.
-You decide which of these to accept and how to evaluate them literally.
-
-```typescript
-  protected literal(v: any): Value<Val> {
-    if ("number" === typeof v
-     || "boolean" === typeof v
-     || null === v)
-      { return { v }; }
-    throw new Error(`${v} not a primitive value`);
-  }
-```
-
-`op` defines the *primitive operations* ("ops") your machine can perform on
-`Value`s.
-The `CESKM` base class defines no ops: by default, the machine can only "do"
-what you permit it to do.
-
-*Aside*: The built-in parser, by convention, treats all symbols beginning with
-`op:` as primitive operators, eg:
-
-```
-(op:mul 1 2)
-
-    =>
-
-{
-  "tag": "cbpv_op",
-  "op": "op:mul",
-  "erands": [
-    {
-      "tag": "cbpv_literal",
-      "v": 1
-    },
-    {
-      "tag": "cbpv_literal",
-      "v": 2
-    }
-  ]
-}
-```
-
-There is no brilliant reason for this, it just keeps the interaction between
-the parser and the evaluator simple in lieu of a more principled mechanism.
-
-```typescript
-  protected op(op_sym: string, args: Value<Val>[]): Value<Val> {
-    switch (op_sym) {
-      case "op:mul": {
-        if (! ("v" in args[0]) || ! ("v" in args[1]))
-          { throw new Error(`arguments must be values`); }
-        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
-          { throw new Error(`arguments must be numbers`); }
-        let result: unknown = args[0].v * args[1].v;
-        return { v: result as Val };
-      }
-      // ... other ops
-      default: return super.op(op_sym, args);
-    }
-  }
-}
-```
-
-Operators are not complete terms by themselves - they aren't variables you can
-pass around as an argument.
-Think of them as the "assembly" instructions of your evaluator.
-You can write functions that call ops and pass *those* around all day.
-
----
-
-Having supplied the universe of result types and filled in how they relate to
-literal expressions and what primitive operators are defined for them, you can
-`run` your machine down to a `Value<Result>`.
-
-Note that we had to write our own `run` method.
-You are free to use the one above, as it works and should give a good intuition
-for how evaluation works in the machine, but there are
-[certainly other evaluation strategies you might pursue](examples/iovm.ts#L313)
-Precursor is here to enable you, not constrain you.
-
-```typescript
-const example_machine = new ExampleMachine();
-const result = example_machine.run(`
-(letrec (
-  (square (λ (n)
-    (let n (? n)      ; op arguments must be *fully* evaluated.
-    (op:mul n n))))   ; higher level languages might not expose ops directly.
-)
-
-((? square) 3) ; a function defined in a `letrec` is automatically
-               ; "suspended" and must be "resumed" with `?` before
-               ; applying it to arguments (in this case, `3`).
-)
-`);
-
-assert.deepStrictEqual(result, { v: 9 });
-```
-
-## are there data structures? a type system?
-
-Ultimately I would like to include a type checker for `Cbpv` which supports
-*linear call-by-push-value with graded coeffects.*
-I'll let you look up the parts of that which interest you.
-
-As for data structures,
-
-1. Nothing yet,
-2. look at this:
-
-```typescript
-const result = new ExampleMachine().run(`
-(letrec (
-  (cons (λ (a b) (reset ((shift k k) a b))))
-)
-(let p1 ((? cons) 3 #f)
-p1)
-)
-`);
-console.log(result);
-```
-
-This prints the following:
-
-```json
-{
-  "k": {
-    "_args": [
-      {
-        "v": 3
-      },
-      {
-        "v": false
-      }
-    ],
-    "_k": {}
-  }
-}
-```
-
-This captured a set of arguments being passed to a "function" `(shift k k)` and
-converted them into what looks suspiciously like a composite or product value
-of some kind.
-
-Stay tuned!
 
 # questions / comments
 

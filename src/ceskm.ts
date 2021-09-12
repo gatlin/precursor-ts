@@ -1,43 +1,327 @@
 /**
- * @module ceskm
+ * **CESKM** stack-based virtual machine implementation.
+ *
+ * A {@link CESKM |*CESKM* virtual machine} is a model of a computer with the
+ * following components:
+ *
+ * - a **C**ontrol-string in some {@link Cbpv | language}, to be evaluated;
+ * - an {@link Env | **E**nvironment} mapping symbols to term definitions or
+ *   addresses in the ...
+ * - {@link Store | **S**tore}, which is a mapping from addresses to actual
+ *   {@link Value | values};
+ * - a {@link Kont | **K**ontinuation}, intentionally misspelled to simplify
+ *   the acronym; and
+ * - the **M**eta-continuation stack, a feature we have added to the usual
+ *   components listed above.
+ *
+ * The virtual machine works by iteratively applying a
+ * {@link CESKM.step | transition step} to a {@link State | machine state},
+ * returning a {@link Value} if finished, or else a subsequent state.
+ *
+ * @see {@link CESKM} for example usage and more detail.
+ * @see {@link https://en.wikipedia.org/wiki/CEK_Machine}
+ *
+ * @packageDocumentation
  */
+import { cbpv_lit, cbpv_is_positive } from "./grammar";
+import type { Cbpv } from "./grammar";
 
-import { Cbpv, cbpv_lit, cbpv_is_positive } from "./grammar";
+/**
+ * Binds *names* in the program source to either
+ * - an **address** to be looked up in the {@link Store}; or
+ * - a {@link Cbpv | term definition}.
+ *
+ * @public
+ * @category Environment & Store
+ */
+class Env {
+  constructor(protected env: { [name: string]: string | Cbpv } = {}) {}
 
-/* Environment */
-export type Env = { [name: string]: string | Cbpv };
+  /**
+   * Lookup a name to retrieve either a `string` address or {@link Cbpv}
+   * expression.
+   * @param name - The name we are looking up.
+   * @returns Either an address string for use with {@link Store} or a
+   * definition.
+   * @throws Error
+   * If the name is unbound in this environment.
+   */
+  public lookup(name: string): string | Cbpv {
+    if (!(name in this.env)) {
+      throw new Error(`${name} not bound in this environment`);
+    }
+    return this.env[name];
+  }
 
-/* Continuations and Values */
-export type Kont<T> =
-  | Record<string, never>
-  | { _let: string[]; _exp: Cbpv; _env: Env; _k: Kont<T> }
-  | { _args: Value<T>[]; _k: Kont<T> };
+  /**
+   * Binds an address string or {@link Cbpv} definition to the given name.
+   * @param name - The name to which we are binding the second argument.
+   * @param addr_or_expr - Either an address or a definition to bind.
+   * @returns This updated environment.
+   */
+  public bind(name: string, addr_or_expr: string | Cbpv): this {
+    this.env[name] = addr_or_expr;
+    return this;
+  }
 
-export const topk = <T>(): Kont<T> => ({});
-export const argk = <T>(_args: Value<T>[], _k: Kont<T>): Kont<T> => ({
-  _args,
-  _k
-});
-export const letk = <T>(
-  _let: string[],
-  _exp: Cbpv,
-  _env: Env,
-  _k: Kont<T>
-): Kont<T> => ({ _let, _exp, _env, _k });
+  /**
+   * Provides read-only access to the environment map.
+   * @see {@link Env.merge}
+   * @internal
+   */
+  protected toRecord(): { [name: string]: string | Cbpv } {
+    return this.env;
+  }
 
-export type Value<T> = { v: T } | { k: Kont<T> };
+  /**
+   * Merge the entire contents of the other environment into ours, replacing
+   * any conflicting entries with their version.
+   * @param other - The other {@link Env | environment}.
+   * @returns This environment updated with the contents of the other one.
+   * @public
+   */
+  public merge(other: Env): Env {
+    return new Env({ ...this.env, ...other.toRecord() });
+  }
+}
 
-export const continuation = <T>(k: Kont<T>): Value<T> => ({ k });
-export const scalar = <T>(v: T): Value<T> => ({ v });
-export const closure = <T>(_exp: Cbpv, _env: Env): Value<T> => ({
-  k: { _exp, _env, _let: [], _k: topk() }
-});
+/**
+ * ⊤, the "top-level" continuation which has no successor.
+ * @remarks
+ * While it is indeed the top-level continutation one notes that its place is
+ * at the *bottom* of the continuation / call stack.
+ * @see {@link Kont | Continuations}
+ * @see {@link topk}
+ * @category Continuations & Values
+ * @internal
+ */
+type Top = Record<string, never>;
 
-/* Finally, the store */
+/**
+ * Constructs a {@link Top | ⊤} continuation.
+ * @category Continuations & Values
+ * @public
+ */
+const topk = (): Top => ({});
 
-export type Store<T> = { [addr: string]: Value<T> };
+/**
+ * Argument continuation
+ *
+ * An ordered n-tuple of 0-or-more arbitrary {@link Value | values} entangled
+ * together in order to evaluate functions: application constructs and pushes
+ * these onto the current {@link Kont | continuation}, while abstraction pops
+ * them off and binds them to names.
+ * @example
+ * ```
+ * (reset ((shift k k) 1 #f))
+ * ```
+ * @example
+ * ```json
+ * {
+ *   "k": {
+ *     "_args": [
+ *       {
+ *         "v": 1
+ *       },
+ *       {
+ *         "v": false
+ *       }
+ *     ],
+ *     "_k": {}
+ *   }
+ * }
+ * ```
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
+ * @remarks
+ * This is the constructor for the categorical tensor product.
+ * @see {@link Kont}
+ * @see {@link Value}
+ * @category Continuations & Values
+ * @internal
+ */
+class Args<T> {
+  /**
+   * @param _args - Array of {@link Value | values} to push on the stack
+   * simultaneously.
+   * @param _k - The next continuation.
+   */
+  constructor(public readonly _args: Value<T>[], public readonly _k: Kont<T>) {}
+}
 
-export type State<T> = {
+/**
+ * Let-continuation
+ *
+ * A let-binding consists of *two* expressions to be evaluated: the result of
+ * the first will be bound to some symbol, which will then be used to evaluate
+ * the second.
+ * @example
+ * ```
+ * (reset
+ *   (let x (shift k k) ; <- first expression
+ *   x                  ; <- second expression
+ * ))
+ * ```
+ * @example
+ * ```json
+ * {
+ *   "k": {
+ *     "_let": [
+ *       "x"
+ *     ],
+ *     "_exp": {
+ *       "tag": "cbpv_symbol",
+ *       "v": "x"
+ *     },
+ *     "_env": {},
+ *     "_k": {}
+ *   }
+ * }
+ * ```
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
+ * @see {@link Kont}
+ * @see {@link Value}
+ * @see {@link closure}
+ * @category Continuations & Values
+ * @internal
+ */
+class Let<T> {
+  /**
+   * @param _let - An array of string identifiers unbound in the expression.
+   * @param _exp - The {@link Cbpv} expression we are enclosing.
+   * @param _env - An {@link Env | environment} binding free symbols in the
+   * expression.
+   * @param _k - The continuation following this one.
+   */
+  constructor(
+    public readonly _let: string[],
+    public readonly _exp: Cbpv,
+    public readonly _env: Env,
+    public readonly _k: Kont<T>
+  ) {}
+}
+
+/**
+ * Continuations
+ *
+ * A continuation is a computer science way of formalizing the call stack.
+ * They represent future work to be performed. The operators "shift" and
+ * "reset" are used to manipulate continuations and the machine state to do
+ * non-linear control flow, side effects, and other functions.
+ *
+ * There are three types of continuation:
+ * - {@link Let | let-frames},
+ * - {@link Args | argument frames}, or
+ * - {@link topk | ⊤}.
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
+ * @see {@link State}
+ * @category Continuations & Values
+ * @public
+ */
+type Kont<T> = Top | Args<T> | Let<T>;
+
+/**
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
+ * @remarks
+ * This allows us to extend the context data we can couple with values.
+ * @category Continuations & Values
+ * @internal
+ */
+interface Valuable<T> {
+  v: T;
+}
+
+/**
+ * A **value** is either a wrapped {@link Kont | continuation} or a wrapped
+ * term of some TypeScript type `T`.
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
+ * @category Continuations & Values
+ * @public
+ */
+type Value<T> = Valuable<T> | { k: Kont<T> };
+
+/**
+ * {@link Value} constructor for wrapped {@link Kont | continuations}.
+ * @typeParam T - The underlying TypeScript types forming the basis of values
+ * in the language. Passed along to nested values.
+ * @category Continuations & Values
+ * @public
+ */
+const continuation = <T>(k: Kont<T>): Value<T> => ({ k });
+
+/**
+ * @typeParam T - The underlying TypeScript types forming the basis of values
+ * in the language. Passed along to nested values.
+ * @category Continuations & Values
+ * @public
+ */
+const scalar = <T>(v: T): Value<T> => ({ v });
+
+/**
+ * Constructs what would commonly be called a "closure".
+ * @remarks
+ * In call-by-push-value any so-called "negative" term (ie, one which may
+ * perform side-effects or modify control flow) may be suspended into a
+ * continuation.
+ * @typeParam T - The underlying TypeScript type forming the basis of values in
+ * the language.
+ * @category Continuations & Values
+ * @public
+ */
+const closure = <T>(_exp: Cbpv, _env: Env): Value<T> =>
+  continuation(new Let<T>([], _exp, _env, topk()));
+
+/**
+ * Maps string-typed addresses to physical values manipulated by the machine.
+ * @typeParam T - The underlying TypeScript type forming the basis of values in
+ * the language.
+ * @category Environment & Store
+ * @public
+ */
+class Store<T> {
+  constructor(protected store: { [addr: string]: Value<T> } = {}) {}
+
+  /**
+   * Bind a value to an address.
+   * @param addr - The address to bind to.
+   * @param value - The {@link Value} we are binding.
+   * @returns This store with the new binding.
+   * @public
+   */
+  public bind(addr: string, value: Value<T>): this {
+    this.store[addr] = value;
+    return this;
+  }
+
+  /**
+   * Lookup the {@link Value} bound to a given address.
+   * @param addr - The string-typed address.
+   * @returns The value located at the address.
+   * @throws Error
+   * If the given address does not contain a value.
+   * @public
+   */
+  public lookup(addr: string): Value<T> {
+    if (!(addr in this.store)) {
+      throw new Error(`Address ${addr} not populated in memory.`);
+    }
+    return this.store[addr];
+  }
+}
+
+/**
+ * The state of the {@link CESKM | virtual machine} mutated over the course of
+ * execution.
+ * @typeParam T - The underlying TypeScript type forming the basis of values in
+ * the language.
+ * @category VM
+ * @public
+ */
+type State<T> = {
   control: Cbpv;
   environment: Env;
   store: Store<T>;
@@ -45,123 +329,136 @@ export type State<T> = {
   meta: Kont<T>[];
 };
 
-/* The CESKM virtual machine */
-export class CESKM<Base = null | boolean> {
-  protected gensym_count = 0;
-
-  protected make_initial_state(control: Cbpv): State<Base> {
-    return {
-      control,
-      environment: this.env_empty(),
-      store: {},
-      kontinuation: topk(),
-      meta: []
-    };
-  }
-
+/**
+ * The CESKM virtual machine.
+ *
+ * The focal point is the {@link CESKM.step | transition step} implementation,
+ * which a sub-class will use as a building-block in its evaluation algorithm.
+ *
+ * @remarks
+ * The machine can only perform the operations it defines, so sub-classes will
+ * almost certainly override {@link CESKM.op}.
+ * If your machine is to manipulate values of types other than `boolean` or
+ * `null`, you will also need to override {@link CESKM.literal} to map term
+ * literals to primitive machine values.
+ * @example
+ * ```typescript
+ * type Base = boolean | null | string | number;
+ * class VM extends CESKM<Base> {
+ *   public run(program: string): Value<Base> {
+ *     let result = this.step(this.inject(parse_cbpv(program)));
+ *     while (!result.done) {
+ *       result = this.step(result.value);
+ *     }
+ *     return result.value;
+ *   }
+ *   protected literal(v: Base): Value<Base> {
+ *     if ("number" === typeof v
+ *      || "boolean" === typeof v
+ *      || "string" === typeof v
+ *      || null === v)
+ *       { return scalar(v); }
+ *     throw new Error(`${v} not a primitive value`);
+ *   }
+ *   protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+ *     switch (op_sym) {
+ *       // ...
+ *       default: return super.op(op_sym,args);
+ *     }
+ *   }
+ * }
+ * ```
+ * @typeParam Base - The types which may be {@link Store | stored} and
+ * {@link CESKM.op | operated} on by your programs.
+ * @category VM
+ * @public
+ */
+class CESKM<Base = null | boolean> {
   /**
-   * @method gensym
-   * @returns { string } A freshly _gen_erated _sym_bol. Multi-purpose.
+   * Define the baseline operations which your machine is able to perform on
+   * data.
+   * @example
+   * ```typescript
+   * type Base = number | boolean | string | null;
+   * class VM extends CESKM<Base> {
+   *   // ...
+   *   protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+   *     switch (op_sym) {
+   *       case "op:add": {
+   *         if (! ("v" in args[0]) || ! ("v" in args[1]))
+   *           { throw new Error(`arguments must be values`); }
+   *         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+   *           { throw new Error(`arguments must be numbers`); }
+   *         const result: unknown = args[0].v + args[1].v;
+   *         return scalar(result as Base);
+   *       }
+   *       // ...
+   *       default: return super.op(op_sym, args);
+   *     }
+   *   }
+   * }
+   * ```
+   * @param op_sym - the symbol for the primitive operator.
+   * @param args - the values passed to the operator.
+   * @category Evaluation
+   * @public
+   * @virtual
    */
-  protected gensym(): string {
-    return `#sym<${this.gensym_count++}>`;
+  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+    let s = "";
+    for (const arg of args) {
+      s += ` ${"v" in arg ? typeof arg.v : "unknown"}`;
+    }
+    throw new Error(`bad op or arguments: ${op_sym} - ${s}`);
   }
 
   /**
-   * @method literal
-   * @returns { Value<Base> } A value representation of the syntactic literal.
+   * @remarks
    * Sub-classes will need to override this method if they change the Base type.
+   * @example
+   * ```typescript
+   * class VM extends CESKM {
+   *   // ...
+   *   protected literal(v: null | boolean) {
+   *     if ("number" === typeof v || "boolean" === typeof v) {
+   *       return scalar(v);
+   *     }
+   *     throw new Error(`invalid literal: ${JSON.stringify(v)}`);
+   *   }
+   * }
+   * ```
+   * @param v - A term intended to represent a literal value.
+   * @returns A value representation of the syntactic literal.
+   * @category Evaluation
+   * @public
+   * @virtual
    */
   protected literal(v: Base): Value<Base> {
-    return closure(cbpv_lit(v), this.env_empty());
-  }
-
-  protected env_lookup(sym: string, env: Env): string | Cbpv {
-    if (sym in env) {
-      return env[sym];
-    }
-    throw new Error(`Unbound symbol: ${sym}`);
-  }
-
-  protected env_push(frame: Env, env: Env): Env {
-    return { ...env, ...frame };
-  }
-
-  protected env_empty(): Env {
-    return {};
-  }
-
-  protected store_bind(
-    sto: Store<Base>,
-    addr: string,
-    value: Value<Base>
-  ): Store<Base> {
-    sto[addr] = value;
-    return sto;
-  }
-
-  protected store_lookup(sto: Store<Base>, addr: string): Value<Base> {
-    const result: Value<Base> = sto[addr];
-    return result;
-  }
-
-  protected store_empty(): Store<Base> {
-    return {};
+    return closure(cbpv_lit(v), this.empty_env());
   }
 
   /**
-   * @method positive
-   * @param { Cbpv } expr The positive expression we are evaluating.
-   * @param { Env } env
-   * @param { Store<Base> } store
-   * @returns { Value<Base> }
-   * @throws if the expression isn't positive.
-   */
-  private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
-    let finished = false;
-    while (!finished) {
-      switch (expr.tag) {
-        case "cbpv_literal":
-          return this.literal(expr.v);
-        case "cbpv_symbol": {
-          if ("_" === expr.v) {
-            return continuation(topk());
-          }
-          else {
-            const addr_or_val: string | Cbpv = this.env_lookup(expr.v, env);
-            return "string" === typeof addr_or_val
-              ? this.store_lookup(store, addr_or_val as string)
-              : closure(addr_or_val as Cbpv, env);
-          }
-          break;
-        }
-        case "cbpv_suspend": {
-          const { exp: cexp } = expr;
-          if (!cbpv_is_positive(cexp)) {
-            return closure(cexp, env);
-          }
-          else {
-            expr = cexp;
-            break;
-          }
-        }
-        case "cbpv_op": {
-          return this.op(
-            expr.op,
-            expr.erands.map((erand: Cbpv) => this.positive(erand, env, store))
-          );
-        }
-        default:
-          finished = true;
-      }
-    }
-    throw new Error(`Invalid positive term: ${JSON.stringify(expr)}`);
-  }
-
-  /**
-   * @method step
-   * @param {State<Base>} state
-   * @returns {IteratorResult<State<Base>,Value<Base>>}
+   * Performs one transition "step" on a {@link State}, yielding either
+   * a terminal {@link Value} or another {@link State} from which to step
+   * again.
+   *
+   * @remarks
+   * This method always terminates for well-formed input.
+   *
+   * The `while`-loop exists because 3 expression types (application,
+   * let-bindings, and letrec-bindings) do not by themselves constitute a
+   * complete *step*.
+   * Rather, each points to a successor term which must be evaluated.
+   *
+   * Seeing as how all input expected to terminate will be finite, it is
+   * reasonable to assume that the number of nested applications and bindings
+   * will be finite, and thus that the loop will eventually terminate.
+   * @param state - The {@link State} from which we are starting.
+   * @returns An `IteratorResult` of either `State<Base>` (not done), or
+   * `Value<Base>` (done).
+   * @category Evaluation
+   * @public
+   * @sealed
    */
   protected step(state: State<Base>): IteratorResult<State<Base>, Value<Base>> {
     let finished = false;
@@ -175,32 +472,32 @@ export class CESKM<Base = null | boolean> {
             this.positive(erand, environment, store)
           );
           control = control.op;
-          kontinuation = argk(vals, kontinuation);
+          kontinuation = new Args(vals, kontinuation);
           break;
         }
         case "cbpv_let": {
           const { v, exp, body } = control;
           control = exp;
-          kontinuation = letk([v], body, environment, kontinuation);
+          kontinuation = new Let([v], body, environment, kontinuation);
           break;
         }
         case "cbpv_letrec": {
-          const frame: Env = this.env_empty();
+          let frame = this.empty_env();
           for (const binding of control.bindings) {
-            frame[binding[0] as string] = binding[1] as Cbpv;
+            frame = frame.bind(binding[0] as string, binding[1] as Cbpv);
           }
           control = control.body;
-          environment = this.env_push(frame, environment);
+          environment = environment.merge(frame);
           break;
         }
         case "cbpv_shift": {
           const addr: string = this.gensym();
           const cc: Kont<Base> = kontinuation;
-          const frame: Env = this.env_empty();
-          frame[control.karg] = addr;
-          environment = this.env_push(frame, environment);
+          let frame = this.empty_env();
+          frame = frame.bind(control.karg, addr);
+          environment = environment.merge(frame);
           control = control.body;
-          store = this.store_bind(store, addr, continuation(cc));
+          store = store.bind(addr, continuation(cc));
           kontinuation = topk();
           return {
             done: false,
@@ -247,14 +544,14 @@ export class CESKM<Base = null | boolean> {
         }
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
-            const frame: Env = this.env_empty();
+            let frame = this.empty_env();
             for (let i = 0; i < control.args.length; i++) {
               const addr: string = this.gensym();
-              store = this.store_bind(store, addr, kontinuation._args[i]);
-              frame[control.args[i]] = addr;
+              store = store.bind(addr, kontinuation._args[i]);
+              frame = frame.bind(control.args[i], addr);
             }
             control = control.body;
-            environment = this.env_push(frame, environment);
+            environment = environment.merge(frame);
             kontinuation = kontinuation._k;
             return {
               done: false,
@@ -276,13 +573,76 @@ export class CESKM<Base = null | boolean> {
   }
 
   /**
-   * @method continue
-   * @param { Value<Base> } val
-   * @param { Kont<Base> } kontinuation
-   * @param { Store<Base> } store
-   * @param { Kont<Base>[] } meta
-   * @returns { IteratorResult<State<Base>,Value<Base>> }
-   * @remarks This method tries to apply the current continuation to a value.
+   * Evaluates a positive {@link Cbpv | expression} to an irreducible
+   * {@link Value}.
+   * @param expr - The positive expression we are evaluating.
+   * @param env - A static environment to bind any free variables.
+   * @param store - A backing {@link Value} storage.
+   * @returns The term as a positive {@link Value}, suspended if necessary.
+   * @throws Error
+   * If the expression isn't positive.
+   * @category Evaluation
+   * @internal
+   * @sealed
+   */
+  private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
+    let finished = false;
+    while (!finished) {
+      switch (expr.tag) {
+        case "cbpv_literal":
+          return this.literal(expr.v as Base);
+        case "cbpv_symbol": {
+          if ("_" === expr.v) {
+            return continuation(topk());
+          }
+          else {
+            const addr_or_expr: string | Cbpv = env.lookup(expr.v);
+            return "string" === typeof addr_or_expr
+              ? store.lookup(addr_or_expr as string)
+              : closure(addr_or_expr as Cbpv, env);
+          }
+          break;
+        }
+        case "cbpv_suspend": {
+          const { exp: cexp } = expr;
+          if (!cbpv_is_positive(cexp)) {
+            return closure(cexp, env);
+          }
+          else {
+            expr = cexp;
+            break;
+          }
+        }
+        case "cbpv_op": {
+          return this.op(
+            expr.op,
+            expr.erands.map((erand: Cbpv) => this.positive(erand, env, store))
+          );
+        }
+        default:
+          finished = true;
+      }
+    }
+    throw new Error(`Invalid positive term: ${JSON.stringify(expr)}`);
+  }
+
+  /**
+   * This method tries to apply the current continuation to a value, which we
+   * know is positive.
+   * @remarks
+   * This is where the meta-stack plays its role: the machine only halts if the
+   * current continuation (argument 2) is {@link Top | ⊤ } *and* the
+   * meta-stack is empty.
+   * It becomes non-empty when the reset operator pushes to it.
+   * @param val - The {@link Value} which we are to annihilate with ...
+   * @param kontinuation - ... the given continuation.
+   * @param store - A backing {@link Value} storage object.
+   * @param meta - A stack (LIFO) of {@link Kont | continuations}.
+   * @returns An `IteratorResult`: either `Value<Base>` if `done`, else
+   * `State<Base>`.
+   * @category Evaluation
+   * @internal
+   * @sealed
    */
   private continue(
     val: Value<Base>,
@@ -309,15 +669,14 @@ export class CESKM<Base = null | boolean> {
       }
       else if ("_let" in kontinuation) {
         const { _let, _exp, _k } = kontinuation;
-        if (1 !== _let.length) {
-          throw new Error(`invalid # of args for letk: ${_let.length}`);
-        }
         let { _env } = kontinuation;
-        const frame: Env = this.env_empty();
-        const addr: string = this.gensym();
-        frame[_let[0]] = addr;
-        _env = this.env_push(frame, _env);
-        store = this.store_bind(store, addr, val);
+        let frame: Env = this.empty_env();
+        for (let i = 0; i < _let.length; i++) {
+          const addr: string = this.gensym();
+          frame = frame.bind(_let[i], addr);
+          store = store.bind(addr, val);
+        }
+        _env = _env.merge(frame);
         final = {
           done: false,
           value: {
@@ -351,20 +710,56 @@ export class CESKM<Base = null | boolean> {
   }
 
   /**
-   * @method op
-   * @param {string} op_sym the symbol for the primitive operator.
-   * @param {Array<Value<Base>>} args the values passed to the operator.
-   * @returns {Value<Base>}
-   * @remarks This method is protected expressly so that sub-classes may define
-   * custom operators (indeed that is a primary motivation for
-   * sub-classes). Those provided here are chosen because in all likelihood
-   * sub-classes will still find them useful.
+   * Constructs a fresh {@link State}.
+   * @param control - The {@link Cbpv} expression we are to evaluate.
+   * @returns An initial state suitable for evaluation.
+   * @see {@link CESKM.step}
+   * @category Evaluation
+   * @public
+   * @sealed
    */
-  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
-    let s = "";
-    for (const arg of args) {
-      s += ` ${"v" in arg ? typeof arg.v : "unknown"}`;
-    }
-    throw new Error(`bad op or arguments: ${op_sym} - ${s}`);
+  protected inject(control: Cbpv): State<Base> {
+    return {
+      control,
+      environment: this.empty_env(),
+      store: this.empty_store(),
+      kontinuation: topk(),
+      meta: []
+    };
+  }
+
+  /**
+   * Monotonically increasing number used to generate unique identifiers.
+   * @internal
+   */
+  protected gensym_count = 0;
+
+  /**
+   * @returns A freshly **gen**erated **sym**bol. Multi-purpose.
+   * @internal
+   */
+  protected gensym(): string {
+    return `#sym<${this.gensym_count++}>`;
+  }
+
+  /**
+   * Provides a way to inject custom sub-classes of {@link Env}.
+   * @virtual
+   * @public
+   */
+  protected empty_env(): Env {
+    return new Env();
+  }
+
+  /**
+   * Provides a way to inject custom sub-classes of {@link Store}.
+   * @virtual
+   * @public
+   */
+  protected empty_store(): Store<Base> {
+    return new Store();
   }
 }
+
+export { Args, CESKM, Env, Let, Store, topk, closure, continuation, scalar };
+export type { Kont, State, Top, Value, Valuable };
