@@ -12,7 +12,6 @@
   "license": "GPL-3",
   "postinstall": "npm run build",
   "scripts": {
-    "prebuild": "echo Using TypeScript && tsc --version",
     "docs": "typedoc",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-esm.json",
     "clean": "rimraf dist && rimraf docs",
