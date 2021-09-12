@@ -20,7 +20,7 @@
  * @example
  * ```typescript
  * import { strict as assert } from "assert";
- * import { CESKM, parse_cbpv } from "precursor-ts";
+ * import { CESKM, parse_cbpv, scalar } from "precursor-ts";
  *
  * type Base = boolean | null | string | number;
  * class VM extends CESKM<Base> {

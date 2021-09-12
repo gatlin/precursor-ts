@@ -35,7 +35,7 @@ import type { Cbpv } from "./grammar";
  * @category Environment & Store
  */
 class Env {
-  constructor(private env: { [name: string]: string | Cbpv } = {}) {}
+  constructor(protected env: { [name: string]: string | Cbpv } = {}) {}
 
   /**
    * Lookup a name to retrieve either a `string` address or {@link Cbpv}
@@ -105,7 +105,12 @@ type Top = Record<string, never>;
 const topk = (): Top => ({});
 
 /**
- * Argument continuation: pushed by applications, popped by abstractions.
+ * Argument continuation
+ *
+ * An ordered n-tuple of 0-or-more arbitrary {@link Value | values} entangled
+ * together in order to evaluate functions: application constructs and pushes
+ * these onto the current {@link Kont | continuation}, while abstraction pops
+ * them off and binds them to names.
  * @example
  * ```
  * (reset ((shift k k) 1 #f))
@@ -145,10 +150,17 @@ class Args<T> {
 }
 
 /**
- * Let-continuation: pushed onto the stack by a `let` expression.
+ * Let-continuation
+ *
+ * A let-binding consists of *two* expressions to be evaluated: the result of
+ * the first will be bound to some symbol, which will then be used to evaluate
+ * the second.
  * @example
  * ```
- * (reset (let x (shift k k) x))
+ * (reset
+ *   (let x (shift k k) ; <- first expression
+ *   x                  ; <- second expression
+ * ))
  * ```
  * @example
  * ```json
@@ -168,12 +180,6 @@ class Args<T> {
  * ```
  * @typeParam T - The underlying TypeScript types which we wrap in our
  * language.
- * @remarks
- * A let-binding consists of *two* expressions to be evaluated: the result of
- * the first will be bound to some symbol, which will then be used to evaluate
- * the second.
- * The let-continuation records the remaining work to be done while evaluating
- * the first expression.
  * @see {@link Kont}
  * @see {@link Value}
  * @see {@link closure}
@@ -197,10 +203,20 @@ class Let<T> {
 }
 
 /**
- * Continuations: {@link Let | let-frames}, {@link Args | argument frames},
- * or {@link topk | ⊤}.
+ * Continuations
+ *
+ * A continuation is a computer science way of formalizing the call stack.
+ * They represent future work to be performed. The operators "shift" and
+ * "reset" are used to manipulate continuations and the machine state to do
+ * non-linear control flow, side effects, and other functions.
+ *
+ * There are three types of continuation:
+ * - {@link Let | let-frames},
+ * - {@link Args | argument frames}, or
+ * - {@link topk | ⊤}.
  * @typeParam T - The underlying TypeScript types which we wrap in our
  * language.
+ * @see {@link State}
  * @category Continuations & Values
  * @public
  */

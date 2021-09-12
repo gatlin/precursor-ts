@@ -34,6 +34,7 @@ import {
  * @remarks
  * This is fine, clever JavaScript that works but I do not endorse how
  * unprofessional this TypeScript conversion is. Nevertheless, it works.
+ * @category Language & Syntax
  * @internal
  */
 class Parser {
@@ -152,6 +153,7 @@ class Parser {
  * @remarks
  * I plagiarized the s-expression parser above and so convert its result into
  * the correct form afterward.
+ * @category Language & Syntax
  * @internal
  */
 const build_cbpv = (ast: any): Cbpv => {
@@ -241,6 +243,7 @@ const build_cbpv = (ast: any): Cbpv => {
  * @returns  A {@link Cbpv } syntax object ready to be executed.
  * @remarks
  * The source code is stripped of comments before parsing.
+ * @category Language & Syntax
  * @public
  */
 const parse_cbpv = (source: string): Cbpv => {
