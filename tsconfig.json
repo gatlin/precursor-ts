@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "lib": ["es2019", "dom"],
     "target": "es2015",
     "module": "commonjs",
     "moduleResolution": "node",
@@ -10,6 +11,6 @@
     "esModuleInterop": true,
     "types": [ "node" ]
   },
-  "include": ["./src/**/*"],
+  "include": ["./src/**/*.ts"],
   "exclude": ["./node_modules/**/*"]
 }
