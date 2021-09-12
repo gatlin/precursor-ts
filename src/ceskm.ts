@@ -416,7 +416,7 @@ class CESKM<Base = null | boolean> {
    * @virtual
    */
   protected literal(v: Base): Value<Base> {
-    return closure(cbpv_lit(v), this.env_empty());
+    return closure(cbpv_lit(v), new Env());
   }
 
   /**
@@ -464,22 +464,22 @@ class CESKM<Base = null | boolean> {
           break;
         }
         case "cbpv_letrec": {
-          let frame: Env = this.env_empty();
+          let frame = new Env();
           for (const binding of control.bindings) {
             frame = frame.bind(binding[0] as string, binding[1] as Cbpv);
           }
           control = control.body;
-          environment = this.env_push(frame, environment);
+          environment = environment.merge(frame);
           break;
         }
         case "cbpv_shift": {
           const addr: string = this.gensym();
           const cc: Kont<Base> = kontinuation;
-          let frame: Env = this.env_empty();
+          let frame = new Env();
           frame = frame.bind(control.karg, addr);
-          environment = this.env_push(frame, environment);
+          environment = environment.merge(frame);
           control = control.body;
-          store = this.store_bind(store, addr, continuation(cc));
+          store = store.bind(addr, continuation(cc));
           kontinuation = topk();
           return {
             done: false,
@@ -526,14 +526,14 @@ class CESKM<Base = null | boolean> {
         }
         case "cbpv_abstract": {
           if ("_args" in kontinuation) {
-            let frame: Env = this.env_empty();
+            let frame = new Env();
             for (let i = 0; i < control.args.length; i++) {
               const addr: string = this.gensym();
-              store = this.store_bind(store, addr, kontinuation._args[i]);
+              store = store.bind(addr, kontinuation._args[i]);
               frame = frame.bind(control.args[i], addr);
             }
             control = control.body;
-            environment = this.env_push(frame, environment);
+            environment = environment.merge(frame);
             kontinuation = kontinuation._k;
             return {
               done: false,
@@ -579,10 +579,10 @@ class CESKM<Base = null | boolean> {
             return continuation(topk());
           }
           else {
-            const addr_or_val: string | Cbpv = this.env_lookup(expr.v, env);
-            return "string" === typeof addr_or_val
-              ? this.store_lookup(store, addr_or_val as string)
-              : closure(addr_or_val as Cbpv, env);
+            const addr_or_expr: string | Cbpv = env.lookup(expr.v);
+            return "string" === typeof addr_or_expr
+              ? store.lookup(addr_or_expr as string)
+              : closure(addr_or_expr as Cbpv, env);
           }
           break;
         }
@@ -653,13 +653,13 @@ class CESKM<Base = null | boolean> {
       else if ("_let" in kontinuation) {
         const { _let, _exp, _k } = kontinuation;
         let { _env } = kontinuation;
-        let frame: Env = this.env_empty();
+        let frame: Env = new Env();
         for (let i = 0; i < _let.length; i++) {
           const addr: string = this.gensym();
           frame = frame.bind(_let[i], addr);
-          store = this.store_bind(store, addr, val);
+          store = store.bind(addr,val);
         }
-        _env = this.env_push(frame, _env);
+        _env = _env.merge(frame);
         final = {
           done: false,
           value: {
@@ -703,8 +703,8 @@ class CESKM<Base = null | boolean> {
   protected inject(control: Cbpv): State<Base> {
     return {
       control,
-      environment: this.env_empty(),
-      store: this.store_empty(),
+      environment: new Env(),
+      store: new Store(),
       kontinuation: topk(),
       meta: []
     };
@@ -722,83 +722,6 @@ class CESKM<Base = null | boolean> {
    */
   protected gensym(): string {
     return `#sym<${this.gensym_count++}>`;
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Env} interface so sub-classes may extend that type to
-   * change environment behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected env_lookup(sym: string, env: Env): string | Cbpv {
-    const addr_or_expr = env.lookup(sym);
-    if (null === addr_or_expr) {
-      throw new Error(`Unbound symbol: ${sym}`);
-    }
-    return addr_or_expr;
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Env} interface so sub-classes may extend that type to
-   * change environment behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected env_push(frame: Env, env: Env): Env {
-    return env.merge(frame);
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Env} interface so sub-classes may extend that type to
-   * change environment behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected env_empty(): Env {
-    return new Env();
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Store} interface so sub-classes may extend that type to
-   * change storage behavior.
-   * {@link Store}.
-   * @category Environment & Store
-   * @internal
-   */
-  protected store_bind(
-    sto: Store<Base>,
-    addr: string,
-    value: Value<Base>
-  ): Store<Base> {
-    return sto.bind(addr, value);
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Store} interface so sub-classes may extend that type to
-   * change storage behavior.
-   * {@link Store}.
-   * @category Environment & Store
-   * @internal
-   */
-  protected store_lookup(sto: Store<Base>, addr: string): Value<Base> {
-    const result: Value<Base> = sto.lookup(addr);
-    return result;
-  }
-
-  /**
-   * @remarks
-   * Uses the {@link Store} interface so sub-classes may extend that type to
-   * change storage behavior.
-   * @category Environment & Store
-   * @internal
-   */
-  protected store_empty(): Store<Base> {
-    return new Store();
   }
 }
 
