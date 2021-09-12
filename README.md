@@ -17,8 +17,15 @@ You can run tests and build the Javascript distribution from the typescript -
 and, in fact, must - simply by running:
 
 ```shell
+nvm use # the author recommends nvm!
 npm i
 ```
+
+# documentation
+
+[API documentation & examples may be found here.][precursordocs]
+
+[precursordocs]: //niltag.net/code/precursor/docs
 
 # synopsis
 
