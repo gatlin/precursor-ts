@@ -107,7 +107,7 @@ const topk = (): Top => ({});
  * Argument continuation: pushed by applications, popped by abstractions.
  * @example
  * ```
- * (reset ( (shift k k)  1 #f ))
+ * (reset ((shift k k) 1 #f))
  * ```
  * @example
  * ```json
@@ -147,7 +147,7 @@ class Args<T> {
  * Let-continuation: pushed onto the stack by a `let` expression.
  * @example
  * ```
- * (reset (let x (shift k k) x) )
+ * (reset (let x (shift k k) x))
  * ```
  * @example
  * ```json
