@@ -80,15 +80,12 @@ class Env {
    * @public
    */
   public merge(other: Env): Env {
-    return new Env({
-      ...this.env,
-      ...other.toRecord()
-    });
+    return new Env({ ...this.env, ...other.toRecord() });
   }
 }
 
 /**
- * The "top-level" continuation which has no successor.
+ * ⊤, the "top-level" continuation which has no successor.
  * @remarks
  * While it is indeed the top-level continutation one notes that its place is
  * at the *bottom* of the continuation / call stack.
@@ -128,6 +125,8 @@ const topk = (): Top => ({});
  *   }
  * }
  * ```
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
  * @remarks
  * This is the constructor for the categorical tensor product.
  * @see {@link Kont}
@@ -166,6 +165,8 @@ class Args<T> {
  *   }
  * }
  * ```
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
  * @remarks
  * A let-binding consists of *two* expressions to be evaluated: the result of
  * the first will be bound to some symbol, which will then be used to evaluate
@@ -197,12 +198,16 @@ class Let<T> {
 /**
  * Continuations: {@link Let | let-frames}, {@link Args | argument frames},
  * or {@link topk | ⊤}.
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
  * @category Continuations & Values
  * @public
  */
 type Kont<T> = Top | Args<T> | Let<T>;
 
 /**
+ * @typeParam T - The underlying TypeScript types which we wrap in our
+ * language.
  * @remarks
  * This allows us to extend the context data we can couple with values.
  * @category Continuations & Values
@@ -312,7 +317,7 @@ type State<T> = {
 /**
  * The CESKM virtual machine.
  *
- * The chief export is the {@link CESKM.step | transition step} implementation,
+ * The focal point is the {@link CESKM.step | transition step} implementation,
  * which a sub-class will use as a building-block in its evaluation strategy.
  *
  * @remarks
