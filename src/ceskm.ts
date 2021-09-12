@@ -98,7 +98,7 @@ type Top = Record<string, never>;
 
 /**
  * Constructs a {@link Top | ⊤} continuation.
- * @category Continuation
+ * @category Continuations & Values
  * @public
  */
 const topk = (): Top => ({});
@@ -266,7 +266,7 @@ const closure = <T>(_exp: Cbpv, _env: Env): Value<T> =>
  * @public
  */
 class Store<T> {
-  constructor(private store: { [addr: string]: Value<T> } = {}) {}
+  constructor(protected store: { [addr: string]: Value<T> } = {}) {}
 
   /**
    * Bind a value to an address.
@@ -744,5 +744,5 @@ class CESKM<Base = null | boolean> {
   }
 }
 
-export { Args, CESKM, Let, topk, closure, continuation, scalar };
-export type { Env, Kont, State, Store, Top, Value, Valuable };
+export { Args, CESKM, Env, Let, Store, topk, closure, continuation, scalar };
+export type { Kont, State, Top, Value, Valuable };

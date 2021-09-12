@@ -12,7 +12,7 @@
   "license": "GPL-3",
   "postinstall": "npm run build",
   "scripts": {
-    "docs": "typedoc",
+    "docs": "typedoc --readme none",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-esm.json",
     "clean": "rimraf dist && rimraf docs",
     "coverage": "tap --ts **/*.test.ts",

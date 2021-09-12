@@ -1,8 +1,6 @@
 {
   "entryPoints": [
-    "./src/ceskm.ts",
-    "./src/grammar.ts",
-    "./src/parser.ts"
+    "./src/index.ts"
   ],
   "out": "docs"
 }
