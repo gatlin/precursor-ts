@@ -74,7 +74,7 @@ class Env {
 
   /**
    * Merge the entire contents of the other environment into ours, replacing
-   * any entries we might have.
+   * any conflicting entries with their version.
    * @param other - The other {@link Env | environment}.
    * @returns This environment updated with the contents of the other one.
    * @public
