@@ -355,6 +355,8 @@ type State<T> = {
  */
 class CESKM<Base = null | boolean> {
   /**
+   * Define the baseline operations which your machine is able to perform on
+   * data.
    * @example
    * ```typescript
    * type Base = number | boolean | string | null;
@@ -368,7 +370,7 @@ class CESKM<Base = null | boolean> {
    *         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
    *           { throw new Error(`arguments must be numbers`); }
    *         const result: unknown = args[0].v + args[1].v;
-   *         return scalar(result as Val);
+   *         return scalar(result as Base);
    *       }
    *       // ...
    *       default: return super.op(op_sym, args);
@@ -376,10 +378,6 @@ class CESKM<Base = null | boolean> {
    *   }
    * }
    * ```
-   * @remarks
-   * This method is protected expressly so that sub-classes may define
-   * custom operators (indeed that is a primary motivation for
-   * sub-classes).
    * @param op_sym - the symbol for the primitive operator.
    * @param args - the values passed to the operator.
    * @category Evaluation
@@ -657,7 +655,7 @@ class CESKM<Base = null | boolean> {
         for (let i = 0; i < _let.length; i++) {
           const addr: string = this.gensym();
           frame = frame.bind(_let[i], addr);
-          store = store.bind(addr,val);
+          store = store.bind(addr, val);
         }
         _env = _env.merge(frame);
         final = {
