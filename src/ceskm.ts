@@ -19,6 +19,7 @@
  * returning a {@link Value} if finished, or else a subsequent state.
  *
  * @see {@link CESKM} for example usage and more detail.
+ * @see {@link https://en.wikipedia.org/wiki/CEK_Machine}
  *
  * @packageDocumentation
  */

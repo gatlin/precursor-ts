@@ -51,27 +51,26 @@ We will use the parser that comes with the library, and create an evaluator
 that can compute with `number`, `boolean`, and `null` values.
 
 First, we sub-class `CESKM` and specify the values our machine can work with.
+Note that `CESKM` does not 
 
 ```typescript
 import {
   CESKM,
   Value,
+  scalar,
   parse_cbpv // use the pre-fab s-expression parser
 } from "precursor-ts";
-
 import { strict as assert } from "assert";
 
-type Val = number | boolean | null ;
-
-class ExampleMachine extends CESKM<Val> {
-
-  public run(program: string): Value<Val> {
-    let st: State<Val> = this.make_initial_state(parse_cbpv(program));
-    while (!this.result) {
-      const res = this.step(st);
-      if (!res.done) {
-        st = res.value as State<Val>; }}
-    return this.result; }
+type Base = number | boolean | null ;
+class ExampleMachine extends CESKM<Base> {
+  public run(program: string): Value<Base> {
+    let result = this.step(this.inject(parse_cbpv(program)));
+    while (!result.done) {
+      result = this.step(result.value);
+    }
+    return result.value;
+  }
 ```
 
 Now we must override the methods `literal` and `op`.
@@ -82,11 +81,11 @@ boolean `#t`rue `#f`alse symbols.
 You decide which of these to accept and how to evaluate them literally.
 
 ```typescript
-  protected literal(v: any): Value<Val> {
+  protected literal(v: Base): Value<Base> {
     if ("number" === typeof v
      || "boolean" === typeof v
      || null === v)
-      { return { v }; }
+      { return scalar(v); }
     throw new Error(`${v} not a primitive value`);
   }
 ```
@@ -124,7 +123,7 @@ There is no brilliant reason for this, it just keeps the interaction between
 the parser and the evaluator simple in lieu of a more principled mechanism.
 
 ```typescript
-  protected op(op_sym: string, args: Value<Val>[]): Value<Val> {
+  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
     switch (op_sym) {
       case "op:mul": {
         if (! ("v" in args[0]) || ! ("v" in args[1]))
@@ -132,7 +131,7 @@ the parser and the evaluator simple in lieu of a more principled mechanism.
         if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
           { throw new Error(`arguments must be numbers`); }
         let result: unknown = args[0].v * args[1].v;
-        return { v: result as Val };
+        return scalar(result as Base);
       }
       // ... other ops
       default: return super.op(op_sym, args);
@@ -150,7 +149,7 @@ You can write functions that call ops and pass *those* around all day.
 
 Having supplied the universe of result types and filled in how they relate to
 literal expressions and what primitive operators are defined for them, you can
-`run` your machine down to a `Value<Result>`.
+`run` your machine down to a `Value<Base>`.
 
 Note that we had to write our own `run` method.
 You are free to use the one above, as it works and should give a good intuition
@@ -173,7 +172,7 @@ const result = example_machine.run(`
 )
 `);
 
-assert.deepStrictEqual(result, { v: 9 });
+assert.deepEqual(result, { v: 9 });
 ```
 
 ## are there data structures? a type system?
