@@ -21,6 +21,7 @@
  * ```typescript
  * import { strict as assert } from "assert";
  * import { CESKM, parse_cbpv, scalar } from "precursor-ts";
+ * import type { Value } from "precursor-ts";
  *
  * type Base = boolean | null | string | number;
  * class VM extends CESKM<Base> {

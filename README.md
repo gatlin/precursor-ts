@@ -4,8 +4,7 @@ Precursor is a small, experimental programming language implemented as a pure
 TypeScript (and hence, JavaScript) library.
 
 You can read more details below in the *synopsis*, you can see a working example
-(with I/O!) in `examples/iovm.ts`, and you can even
-[try it out in a live demonstration in your browser][precursordemo].
+(with I/O!) [live in your browser!][precursordemo].
 
 [precursordemo]: https://niltag.net/code/precursor
 
@@ -53,6 +52,7 @@ npm run docs
 ```typescript
 import { strict as assert } from "assert";
 import { CESKM, parse_cbpv, scalar } from "precursor-ts";
+import type { Value } from "precursor-ts";
 
 type Base = boolean | null | string | number;
 class VM extends CESKM<Base> {

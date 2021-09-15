@@ -1,6 +1,6 @@
 {
   "name": "precursor-ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A call-by-push-value virtual machine and language in pure typescript",
   "author": "Gatlin Johnson <gatlin@niltag.net>",
   "main": "./dist/cjs/index.js",
@@ -20,8 +20,7 @@
     "lint": "eslint . --fix --ext .ts",
     "prepublishOnly": "npm run build",
     "prepare": "npm run build",
-    "test": "tap --ts --no-coverage **/*.test.ts",
-    "examples": "ts-node examples/iovm"
+    "test": "tap --ts --no-coverage **/*.test.ts"
   },
   "repository": {
     "type": "git",
