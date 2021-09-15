@@ -20,8 +20,7 @@
     "lint": "eslint . --fix --ext .ts",
     "prepublishOnly": "npm run build",
     "prepare": "npm run build",
-    "test": "tap --ts --no-coverage **/*.test.ts",
-    "examples": "ts-node examples/iovm"
+    "test": "tap --ts --no-coverage **/*.test.ts"
   },
   "repository": {
     "type": "git",
