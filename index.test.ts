@@ -3,22 +3,10 @@ import {
   Env,
   Store,
   scalar,
-  continuation,
-  closure,
   parse_cbpv,
   cbpv_lit,
-  cbpv_sym,
   cbpv_op,
-  cbpv_if,
-  cbpv_reset,
-  cbpv_shift,
-  cbpv_let,
-  cbpv_letrec,
-  cbpv_app,
-  cbpv_suspend,
-  cbpv_resume,
-  cbpv_lam,
-  cbpv_is_positive,
+  cbpv_is_positive
 } from "./src/index";
 import type {
   State,
@@ -180,7 +168,13 @@ class DebugMachine<Val> extends CESKM<Val> {
   }
 }
 
-test("CESKM: evaluates literals correctly", (t) => {
+test("grammar: cbpv_is_positive", (t) => {
+  t.ok(cbpv_is_positive(cbpv_lit(1)));
+  t.ok(cbpv_is_positive(cbpv_op("op:test", [])));
+  t.end();
+});
+
+test("ceskm: evaluates literals correctly", (t) => {
   const vm = new DebugMachine();
   t.same(vm.run("#t"), {
     v: true
@@ -191,13 +185,7 @@ test("CESKM: evaluates literals correctly", (t) => {
   t.end();
 });
 
-test("cbpv_is_positive", (t) => {
-  t.ok(cbpv_is_positive(cbpv_lit(1)));
-  t.ok(cbpv_is_positive(cbpv_op("op:test", [])));
-  t.end();
-});
-
-test("CESKM: correctly transforms state on each step", (t) => {
+test("ceskm: correctly transforms state on each step", (t) => {
   const vm = new DebugMachine();
   t.same(vm.run("1"), { v: 1 });
   t.same(vm.run("y"), { v: true });
