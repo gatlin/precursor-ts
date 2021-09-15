@@ -223,7 +223,9 @@ test("CESKM: correctly transforms state on each step", (t) => {
   t.throws(() => {
     vm.run("(λ (n) n)");
   });
-  t.same(vm.run("((λ (n) n) (? 1))"), {});
+  t.throws(() => {
+    vm.run("((λ (n) n) (? 1))");
+  });
   t.same(vm.run("(! (λ (n) n))"), {
     "k": {
       "_let": [],
