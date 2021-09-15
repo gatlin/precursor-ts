@@ -2,11 +2,17 @@
   "root": true,
   "parser": "@typescript-eslint/parser",
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "eslint-plugin-tsdoc"
   ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended"
-  ]
+    "plugin:@typescript-eslint/recommended",
+  ],
+  "rules": {
+    "quotes": ["error","double"],
+    "comma-dangle": ["error", "never"],
+    "tsdoc/syntax": "warn"
+  }
 }

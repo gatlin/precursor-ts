@@ -601,7 +601,6 @@ class CESKM<Base = null | boolean> {
               ? store.lookup(addr_or_expr as string)
               : closure(addr_or_expr as Cbpv, env);
           }
-          break;
         }
         case "cbpv_suspend": {
           const { exp: cexp } = expr;

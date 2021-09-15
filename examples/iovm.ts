@@ -100,138 +100,138 @@ class VM extends CESKM<Base> {
      || "boolean" === typeof v
      || "string" === typeof v
      || null === v)
-      { return scalar(v); }
+    { return scalar(v); }
     throw new Error(`${v} not a literal we can do anything with :(`);
   }
 
   protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
     switch (op_sym) {
-      case "op:mul": {
-        if (! ("v" in args[0]) || ! ("v" in args[1]))
-          { throw new Error(`arguments must be values`); }
-        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
-          { throw new Error(`arguments must be numbers`); }
-        const result: unknown = args[0].v * args[1].v;
-        return scalar(result as Base);
+    case "op:mul": {
+      if (! ("v" in args[0]) || ! ("v" in args[1]))
+      { throw new Error("arguments must be values"); }
+      if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+      { throw new Error("arguments must be numbers"); }
+      const result: unknown = args[0].v * args[1].v;
+      return scalar(result as Base);
+    }
+    case "op:add": {
+      if (! ("v" in args[0]) || ! ("v" in args[1]))
+      { throw new Error("arguments must be values"); }
+      if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+      { throw new Error("arguments must be numbers"); }
+      const result: unknown = args[0].v + args[1].v;
+      return scalar(result as Base);
+    }
+    case "op:sub": {
+      if (! ("v" in args[0]) || ! ("v" in args[1]))
+      { throw new Error("arguments must be values"); }
+      if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+      { throw new Error("arguments must be numbers"); }
+      const result: unknown = args[0].v - args[1].v;
+      return scalar(result as Base);
+    }
+    case "op:eq": {
+      if (! ("v" in args[0]) || ! ("v" in args[1])) {
+        throw new Error("arguments must be values");
       }
-      case "op:add": {
-        if (! ("v" in args[0]) || ! ("v" in args[1]))
-          { throw new Error(`arguments must be values`); }
-        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
-          { throw new Error(`arguments must be numbers`); }
-        const result: unknown = args[0].v + args[1].v;
-        return scalar(result as Base);
-      }
-      case "op:sub": {
-        if (! ("v" in args[0]) || ! ("v" in args[1]))
-          { throw new Error(`arguments must be values`); }
-        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v)
-          { throw new Error(`arguments must be numbers`); }
-        const result: unknown = args[0].v - args[1].v;
-        return scalar(result as Base);
-      }
-      case "op:eq": {
-        if (! ("v" in args[0]) || ! ("v" in args[1])) {
-          throw new Error(`arguments must be values`);
-        }
-        if (("number" !== typeof args[0].v || "number" !== typeof args[1].v)
+      if (("number" !== typeof args[0].v || "number" !== typeof args[1].v)
          && ("boolean" !== typeof args[0].v || "boolean" !== typeof args[1].v)
          && ("string" !== typeof args[0].v || "string" !== typeof args[1].v) ) {
-          throw new Error(`arguments must be numbers or booleans or strings`);
-        }
-        const result: unknown = args[0].v === args[1].v;
-        return scalar(result as Base);
+        throw new Error("arguments must be numbers or booleans or strings");
       }
-      case "op:lt": {
-        if (! ("v" in args[0]) || ! ("v" in args[1])) {
-          throw new Error(`arguments must be values`);
-        }
-        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
-          throw new Error(`arguments must be numbers`);
-        }
-        const result: unknown = args[0].v < args[1].v;
-        return scalar(result as Base);
+      const result: unknown = args[0].v === args[1].v;
+      return scalar(result as Base);
+    }
+    case "op:lt": {
+      if (! ("v" in args[0]) || ! ("v" in args[1])) {
+        throw new Error("arguments must be values");
       }
-      case "op:lte": {
-        if (! ("v" in args[0]) || ! ("v" in args[1])) {
-          throw new Error(`arguments must be values`);
-        }
-        if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
-          throw new Error(`arguments must be numbers`);
-        }
-        const result: unknown = args[0].v <= args[1].v;
-        return scalar(result as Base);
+      if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+        throw new Error("arguments must be numbers");
       }
-      case "op:concat": {
-        if (! ("v" in args[0]) || ! ("v" in args[1])) {
-          throw new Error(`arguments must be values`);
-        }
-        if ("string" !== typeof args[0].v || "string" !== typeof args[1].v) {
-          throw new Error(`arguments must be strings`);
-        }
-        const result: unknown = args[0].v.concat(args[1].v);
-        return scalar(result as Base);
+      const result: unknown = args[0].v < args[1].v;
+      return scalar(result as Base);
+    }
+    case "op:lte": {
+      if (! ("v" in args[0]) || ! ("v" in args[1])) {
+        throw new Error("arguments must be values");
       }
-      case "op:strlen": {
-        if (! ("v" in args[0])) {
-          throw new Error(`argument must be a value`);
-        }
-        if ("string" !== typeof args[0].v) {
-          throw new Error(`argument must be a string`);
-        }
-        const result: unknown = args[0].v.length;
-        return scalar(result as Base);
+      if ("number" !== typeof args[0].v || "number" !== typeof args[1].v) {
+        throw new Error("arguments must be numbers");
       }
-      case "op:substr": {
-        if (! ("v" in args[0]) || ! ("v" in args[1]) || ! ("v" in args[2])) {
-          throw new Error(`arguments must be values`);
-        }
-        if ("string" !== typeof args[0].v || "number" !== typeof args[1].v
+      const result: unknown = args[0].v <= args[1].v;
+      return scalar(result as Base);
+    }
+    case "op:concat": {
+      if (! ("v" in args[0]) || ! ("v" in args[1])) {
+        throw new Error("arguments must be values");
+      }
+      if ("string" !== typeof args[0].v || "string" !== typeof args[1].v) {
+        throw new Error("arguments must be strings");
+      }
+      const result: unknown = args[0].v.concat(args[1].v);
+      return scalar(result as Base);
+    }
+    case "op:strlen": {
+      if (! ("v" in args[0])) {
+        throw new Error("argument must be a value");
+      }
+      if ("string" !== typeof args[0].v) {
+        throw new Error("argument must be a string");
+      }
+      const result: unknown = args[0].v.length;
+      return scalar(result as Base);
+    }
+    case "op:substr": {
+      if (! ("v" in args[0]) || ! ("v" in args[1]) || ! ("v" in args[2])) {
+        throw new Error("arguments must be values");
+      }
+      if ("string" !== typeof args[0].v || "number" !== typeof args[1].v
            || "number" !== typeof args[2].v) {
-          throw new Error(`arguments must be strings`);
-        }
-        const result: unknown = args[0].v.slice(args[1].v,args[2].v);
-        return scalar(result as Base);
+        throw new Error("arguments must be strings");
       }
-      case "op:str->num": {
-        if (! ("v" in args[0])) {
-          throw new Error(`argument must be a value`);
-        }
-        if ("string" !== typeof args[0].v) {
-          throw new Error(`argument must be a string: ${args[0].v}`);
-        }
-        return scalar(parseInt(args[0].v as string) as Base);
+      const result: unknown = args[0].v.slice(args[1].v,args[2].v);
+      return scalar(result as Base);
+    }
+    case "op:str->num": {
+      if (! ("v" in args[0])) {
+        throw new Error("argument must be a value");
       }
-      case "op:num->str": {
-        if (! ("v" in args[0])) {
-          throw new Error(`argument must be a value`);
-        }
-        if ("number" !== typeof args[0].v) {
-          throw new Error(`argument must be a number: ${args[0].v}`);
-        }
-        return scalar((args[0].v as number).toString() as Base);
+      if ("string" !== typeof args[0].v) {
+        throw new Error(`argument must be a string: ${args[0].v}`);
       }
-      case "op:puts": {
-        if (! ("v" in args[0])) {
-          throw new Error(`argument must be a value`);
-        }
-        if ("string" !== typeof args[0].v) {
-          throw new Error(`argument must be a string: ${args[0].v}`);
-        }
-        console.log(args[0].v);
-        return scalar(null);
+      return scalar(parseInt(args[0].v as string) as Base);
+    }
+    case "op:num->str": {
+      if (! ("v" in args[0])) {
+        throw new Error("argument must be a value");
       }
-      case "op:gets": {
-        if (!this.stdin)
-        { throw new Error(`stdin is out of order!`); }
-        const iter = this.stdin.next();
-        if (!iter.done) {
-          return scalar(iter.value as Base);
-        }
-        throw new Error(`stdin is closed for good.`);
+      if ("number" !== typeof args[0].v) {
+        throw new Error(`argument must be a number: ${args[0].v}`);
       }
-      // You are encouraged (and expected!) to add more ops here.
-      default: return super.op(op_sym, args);
+      return scalar((args[0].v as number).toString() as Base);
+    }
+    case "op:puts": {
+      if (! ("v" in args[0])) {
+        throw new Error("argument must be a value");
+      }
+      if ("string" !== typeof args[0].v) {
+        throw new Error(`argument must be a string: ${args[0].v}`);
+      }
+      console.log(args[0].v);
+      return scalar(null);
+    }
+    case "op:gets": {
+      if (!this.stdin)
+      { throw new Error("stdin is out of order!"); }
+      const iter = this.stdin.next();
+      if (!iter.done) {
+        return scalar(iter.value as Base);
+      }
+      throw new Error("stdin is closed for good.");
+    }
+    // You are encouraged (and expected!) to add more ops here.
+    default: return super.op(op_sym, args);
     }
   }
 }
