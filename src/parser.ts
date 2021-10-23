@@ -172,14 +172,23 @@ const build_cbpv = (ast: any): Cbpv => {
         return cbpv_lam(ast[1], build_cbpv(ast[2]));
       }
       case 'let': {
-        if ('string' !== typeof ast[1]) {
-          throw new Error('lhs of let-binding must be symbol');
+        if ('string' === typeof ast[1]) {
+          return cbpv_let(
+            [ast[1]],
+            build_cbpv(ast[2]),
+            build_cbpv(ast[3])
+          );
         }
-        return cbpv_let(
-          <string>ast[1],
-          build_cbpv(ast[2]),
-          build_cbpv(ast[3])
-        );
+        else if (Array.isArray(ast[1])) {
+          return cbpv_let(
+            ast[1] as string[],
+            build_cbpv(ast[2]),
+            build_cbpv(ast[3])
+          );
+        }
+        else {
+          throw new Error(`let must bind to single argument or list of variables`);
+        }
       }
       case 'letrec': {
         if (!Array.isArray(ast[1])) {
