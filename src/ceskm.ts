@@ -670,23 +670,43 @@ class CESKM<Base = null | boolean> {
         const { _let, _exp, _k } = kontinuation;
         let { _env } = kontinuation;
         let frame: Env = this.empty_env();
-        for (let i = 0; i < _let.length; i++) {
-          const addr: string = this.gensym();
-          frame = frame.bind(_let[i], addr);
-          store = store.bind(addr, val);
-        }
-        _env = _env.merge(frame);
-        final = {
-          done: false,
-          value: {
-            control: _exp,
-            environment: _env,
-            store,
-            kontinuation: _k,
-            meta
+        if ("k" in val && ("_args" in val.k)) { // it's not an argk
+          const { _args } = val.k;
+          for (let i = 0; i < _let.length; i++) {
+            const addr: string = this.gensym();
+            frame = frame.bind(_let[i], addr);
+            store = store.bind(addr, _args[i]);
+            _env = _env.merge(frame);
           }
-        };
-        finished = true;
+          final = {
+            done: false,
+            value: {
+              control: _exp,
+              environment: _env,
+              store,
+              kontinuation: _k,
+              meta
+            }
+          };
+          finished = true;
+        }
+        else {
+          const addr: string = this.gensym();
+          frame = frame.bind(_let[0], addr);
+          store = store.bind(addr, val);
+          _env = _env.merge(frame);
+          final = {
+            done: false,
+            value: {
+              control: _exp,
+              environment: _env,
+              store,
+              kontinuation: _k,
+              meta
+            }
+          };
+          finished = true;
+        }
       }
       else {
         if (0 === meta.length) {
