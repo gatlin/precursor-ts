@@ -670,7 +670,8 @@ class CESKM<Base = null | boolean> {
         const { _let, _exp, _k } = kontinuation;
         let { _env } = kontinuation;
         let frame: Env = this.empty_env();
-        if ("k" in val && ("_args" in val.k)) { // it's not an argk
+        if ("k" in val && "_args" in val.k) {
+          // it's not an argk
           const { _args } = val.k;
           for (let i = 0; i < _let.length; i++) {
             const addr: string = this.gensym();
