@@ -678,35 +678,24 @@ class CESKM<Base = null | boolean> {
             store = store.bind(addr, _args[i]);
             _env = _env.merge(frame);
           }
-          final = {
-            done: false,
-            value: {
-              control: _exp,
-              environment: _env,
-              store,
-              kontinuation: _k,
-              meta
-            }
-          };
-          finished = true;
         }
         else {
           const addr: string = this.gensym();
           frame = frame.bind(_let[0], addr);
           store = store.bind(addr, val);
           _env = _env.merge(frame);
-          final = {
-            done: false,
-            value: {
-              control: _exp,
-              environment: _env,
-              store,
-              kontinuation: _k,
-              meta
-            }
-          };
-          finished = true;
         }
+        final = {
+          done: false,
+          value: {
+            control: _exp,
+            environment: _env,
+            store,
+            kontinuation: _k,
+            meta
+          }
+        };
+        finished = true;
       }
       else {
         if (0 === meta.length) {
