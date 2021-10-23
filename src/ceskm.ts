@@ -478,7 +478,7 @@ class CESKM<Base = null | boolean> {
         case "cbpv_let": {
           const { v, exp, body } = control;
           control = exp;
-          kontinuation = new Let([v], body, environment, kontinuation);
+          kontinuation = new Let(v, body, environment, kontinuation);
           break;
         }
         case "cbpv_letrec": {
