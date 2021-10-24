@@ -652,10 +652,9 @@ class CESKM<Base = null | boolean> {
     let finished = false;
     let final: IteratorResult<State<Base>, Value<Base>> | undefined;
     while (!finished) {
-      // update each "val" with corresp. "actual_val" and then loop
       if ("_args" in kontinuation) {
         const { _args, _k } = kontinuation;
-        const actual_val: Value<Base> = _args[0];
+        const actual_val: Value<Base> = { k: kontinuation };
         const next_k: Kont<Base> = _k;
         meta.unshift(next_k);
         if (!("k" in val)) {
