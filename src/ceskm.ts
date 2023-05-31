@@ -9,7 +9,7 @@
  *   addresses in the ...
  * - {@link Store | **S**tore}, which is a mapping from addresses to actual
  *   {@link Value | values};
- * - a {@link Kont | **K**ontinuation}, intentionally misspelled to simplify
+ * - a {@link Continuation | **K**ontinuation}, intentionally misspelled to simplify
  *   the acronym; and
  * - the **M**eta-continuation stack, a feature we have added to the usual
  *   components listed above.
@@ -64,24 +64,8 @@ class Env {
     return this;
   }
 
-  /**
-   * Provides read-only access to the environment map.
-   * @see {@link Env.merge}
-   * @internal
-   */
-  protected toRecord(): { [name: string]: string | Cbpv } {
-    return this.env;
-  }
-
-  /**
-   * Merge the entire contents of the other environment into ours, replacing
-   * any conflicting entries with their version.
-   * @param other - The other {@link Env | environment}.
-   * @returns This environment updated with the contents of the other one.
-   * @public
-   */
-  public merge(other: Env): Env {
-    return new Env({ ...this.env, ...other.toRecord() });
+  public clone(): Record<string, string | Cbpv> {
+    return { ...this.env };
   }
 }
 
@@ -90,7 +74,7 @@ class Env {
  * @remarks
  * While it is indeed the top-level continutation one notes that its place is
  * at the *bottom* of the continuation / call stack.
- * @see {@link Kont | Continuations}
+ * @see {@link Continuation | Continuations}
  * @see {@link topk}
  * @category Continuations & Values
  * @internal
@@ -109,7 +93,7 @@ const topk = (): Top => ({});
  *
  * An ordered n-tuple of 0-or-more arbitrary {@link Value | values} entangled
  * together in order to evaluate functions: application constructs and pushes
- * these onto the current {@link Kont | continuation}, while abstraction pops
+ * these onto the current {@link Continuation | continuation}, while abstraction pops
  * them off and binds them to names.
  * @example
  * ```
@@ -135,7 +119,7 @@ const topk = (): Top => ({});
  * language.
  * @remarks
  * This is the constructor for the categorical tensor product.
- * @see {@link Kont}
+ * @see {@link Continuation}
  * @see {@link Value}
  * @category Continuations & Values
  * @internal
@@ -146,7 +130,10 @@ class Args<T> {
    * simultaneously.
    * @param _k - The next continuation.
    */
-  constructor(public readonly _args: Value<T>[], public readonly _k: Kont<T>) {}
+  constructor(
+    public readonly _args: Value<T>[],
+    public readonly _k: Continuation<T>
+  ) {}
 }
 
 /**
@@ -180,7 +167,7 @@ class Args<T> {
  * ```
  * @typeParam T - The underlying TypeScript types which we wrap in our
  * language.
- * @see {@link Kont}
+ * @see {@link Continuation}
  * @see {@link Value}
  * @see {@link closure}
  * @category Continuations & Values
@@ -198,7 +185,7 @@ class Let<T> {
     public readonly _let: string[],
     public readonly _exp: Cbpv,
     public readonly _env: Env,
-    public readonly _k: Kont<T>
+    public readonly _k: Continuation<T>
   ) {}
 }
 
@@ -220,38 +207,26 @@ class Let<T> {
  * @category Continuations & Values
  * @public
  */
-type Kont<T> = Top | Args<T> | Let<T>;
+type Continuation<T> = Top | Args<T> | Let<T>;
 
 /**
- * @typeParam T - The underlying TypeScript types which we wrap in our
- * language.
- * @remarks
- * This allows us to extend the context data we can couple with values.
- * @category Continuations & Values
- * @internal
- */
-interface Valuable<T> {
-  v: T;
-}
-
-/**
- * A **value** is either a wrapped {@link Kont | continuation} or a wrapped
+ * A **value** is either a wrapped {@link Continuation | continuation} or a wrapped
  * term of some TypeScript type `T`.
  * @typeParam T - The underlying TypeScript types which we wrap in our
  * language.
  * @category Continuations & Values
  * @public
  */
-type Value<T> = Valuable<T> | { k: Kont<T> };
+type Value<T> = { v: T } | { k: Continuation<T> };
 
 /**
- * {@link Value} constructor for wrapped {@link Kont | continuations}.
+ * {@link Value} constructor for wrapped {@link Continuation | continuations}.
  * @typeParam T - The underlying TypeScript types forming the basis of values
  * in the language. Passed along to nested values.
  * @category Continuations & Values
  * @public
  */
-const continuation = <T>(k: Kont<T>): Value<T> => ({ k });
+const continuation = <T>(k: Continuation<T>): Value<T> => ({ k });
 
 /**
  * @typeParam T - The underlying TypeScript types forming the basis of values
@@ -325,8 +300,8 @@ type State<T> = {
   control: Cbpv;
   environment: Env;
   store: Store<T>;
-  kontinuation: Kont<T>;
-  meta: Kont<T>[];
+  kontinuation: Continuation<T>;
+  meta: Continuation<T>[];
 };
 
 /**
@@ -373,7 +348,18 @@ type State<T> = {
  * @category VM
  * @public
  */
-class CESKM<Base = null | boolean> {
+class CESKM<Base> {
+  /**
+   * @param envCtor - Constructor for {@link Env} or a sub-class.
+   * @param storeCtor - Constructor for {@link Store} or a sub-class.
+   */
+  constructor(
+    protected readonly storeCtor: new () => Store<Base> = Store,
+    protected readonly envCtor: new (
+      e?: Record<string, string | Cbpv>
+    ) => Env = Env
+  ) {}
+
   /**
    * Define the baseline operations which your machine is able to perform on
    * data.
@@ -461,107 +447,110 @@ class CESKM<Base = null | boolean> {
    * @sealed
    */
   protected step(state: State<Base>): IteratorResult<State<Base>, Value<Base>> {
-    let finished = false;
+    let done = false;
     let { control, environment, store, kontinuation } = state;
     const { meta } = state;
 
-    while (!finished) {
+    while (!done) {
       switch (control.tag) {
         case "cbpv_apply": {
-          const vals = control.erands.map((erand: Cbpv) =>
-            this.positive(erand, environment, store)
+          const { op, erands } = control;
+          control = op;
+          kontinuation = new Args(
+            erands.map((erand: Cbpv) =>
+              this.positive(erand, environment, store)
+            ),
+            kontinuation
           );
-          control = control.op;
-          kontinuation = new Args(vals, kontinuation);
           break;
         }
         case "cbpv_let": {
           const { v, exp, body } = control;
           control = exp;
-          kontinuation = new Let(v, body, environment, kontinuation);
+          kontinuation = new Let(
+            v,
+            body,
+            this.empty_env(environment.clone()),
+            kontinuation
+          );
           break;
         }
         case "cbpv_letrec": {
-          let frame = this.empty_env();
-          for (const binding of control.bindings) {
-            frame = frame.bind(binding[0] as string, binding[1] as Cbpv);
+          const { body, bindings } = control;
+          control = body;
+          for (const [name, definition] of bindings) {
+            environment = environment.bind(name, definition);
           }
-          control = control.body;
-          environment = environment.merge(frame);
           break;
         }
         case "cbpv_shift": {
-          const addr: string = this.gensym();
-          const cc: Kont<Base> = kontinuation;
-          let frame = this.empty_env();
-          frame = frame.bind(control.karg, addr);
-          environment = environment.merge(frame);
-          control = control.body;
-          store = store.bind(addr, continuation(cc));
+          const { karg, body } = control;
+          const addr = this.gensym();
+          control = body;
+          environment = environment.bind(karg, addr);
+          store = store.bind(addr, continuation(kontinuation));
           kontinuation = topk();
           return {
-            done: false,
+            done,
             value: { control, environment, store, kontinuation, meta }
           };
         }
         case "cbpv_reset": {
-          const cc: Kont<Base> = kontinuation;
           control = control.exp;
+          meta.unshift(kontinuation);
           kontinuation = topk();
-          meta.unshift(cc);
           return {
-            done: false,
+            done,
             value: { control, environment, store, kontinuation, meta }
           };
         }
         case "cbpv_if": {
-          const cv = this.positive(control.c, environment, store);
+          const { c, t, e } = control;
+          const cv = this.positive(c, environment, store);
           if (!("v" in cv)) {
             throw new Error("`if` conditional must be a value");
           }
           if ("boolean" !== typeof cv.v) {
             throw new Error("`if` conditional must be boolean");
           }
-          control = cv.v ? control.t : control.e;
+          control = cv.v ? t : e;
           return {
-            done: false,
+            done,
             value: { control, environment, store, kontinuation, meta }
           };
         }
         case "cbpv_resume": {
           const val = this.positive(control.v, environment, store);
-          if ("k" in val && "_exp" in val.k) {
+          if ("k" in val && val.k instanceof Let) {
             control = val.k._exp;
             environment = val.k._env;
             return {
-              done: false,
+              done,
               value: { control, environment, store, kontinuation, meta }
             };
-          }
-          else {
+          } else {
             return this.continue(val, kontinuation, store, meta);
           }
         }
         case "cbpv_abstract": {
-          if ("_args" in kontinuation) {
-            let frame = this.empty_env();
-            for (let i = 0; i < control.args.length; i++) {
-              const addr: string = this.gensym();
+          if (kontinuation instanceof Args) {
+            const { args, body } = control;
+            for (let i = 0; i < args.length; i++) {
+              const addr = this.gensym();
+              environment = environment.bind(args[i], addr);
               store = store.bind(addr, kontinuation._args[i]);
-              frame = frame.bind(control.args[i], addr);
             }
-            control = control.body;
-            environment = environment.merge(frame);
+            control = body;
             kontinuation = kontinuation._k;
             return {
-              done: false,
+              done,
               value: { control, environment, store, kontinuation, meta }
             };
           }
           throw new Error("invalid continuation for function");
         }
         default:
-          finished = true;
+          done = true;
       }
     }
     return this.continue(
@@ -586,29 +575,27 @@ class CESKM<Base = null | boolean> {
    * @sealed
    */
   private positive(expr: Cbpv, env: Env, store: Store<Base>): Value<Base> {
-    let finished = false;
-    while (!finished) {
+    let done = false;
+    while (!done) {
       switch (expr.tag) {
         case "cbpv_literal":
           return this.literal(expr.v as Base);
         case "cbpv_symbol": {
           if ("_" === expr.v) {
             return continuation(topk());
-          }
-          else {
-            const addr_or_expr: string | Cbpv = env.lookup(expr.v);
+          } else {
+            const addr_or_expr = env.lookup(expr.v);
             return "string" === typeof addr_or_expr
               ? store.lookup(addr_or_expr as string)
-              : closure(addr_or_expr as Cbpv, env);
+              : closure(addr_or_expr as Cbpv, this.empty_env(env.clone()));
           }
         }
         case "cbpv_suspend": {
-          const { exp: cexp } = expr;
-          if (!cbpv_is_positive(cexp)) {
-            return closure(cexp, env);
-          }
-          else {
-            expr = cexp;
+          const { exp } = expr;
+          if (!cbpv_is_positive(exp)) {
+            return closure(exp, this.empty_env(env.clone()));
+          } else {
+            expr = exp;
             break;
           }
         }
@@ -619,7 +606,7 @@ class CESKM<Base = null | boolean> {
           );
         }
         default:
-          finished = true;
+          done = true;
       }
     }
     throw new Error(`Invalid positive term: ${JSON.stringify(expr)}`);
@@ -633,10 +620,10 @@ class CESKM<Base = null | boolean> {
    * current continuation (argument 2) is {@link Top | ⊤ } *and* the
    * meta-stack is empty.
    * It becomes non-empty when the reset operator pushes to it.
-   * @param val - The {@link Value} which we are to annihilate with ...
+   * @param value - The {@link Value} which we are to annihilate with ...
    * @param kontinuation - ... the given continuation.
    * @param store - A backing {@link Value} storage object.
-   * @param meta - A stack (LIFO) of {@link Kont | continuations}.
+   * @param meta - A stack (LIFO) of {@link Continuation | continuations}.
    * @returns An `IteratorResult`: either `Value<Base>` if `done`, else
    * `State<Base>`.
    * @category Evaluation
@@ -644,76 +631,62 @@ class CESKM<Base = null | boolean> {
    * @sealed
    */
   private continue(
-    val: Value<Base>,
-    kontinuation: Kont<Base>,
+    value: Value<Base>,
+    kontinuation: Continuation<Base>,
     store: Store<Base>,
-    meta: Kont<Base>[]
+    meta: Continuation<Base>[]
   ): IteratorResult<State<Base>, Value<Base>> {
-    let finished = false;
-    let final: IteratorResult<State<Base>, Value<Base>> | undefined;
-    while (!finished) {
-      if ("_args" in kontinuation) {
-        const { _args, _k } = kontinuation;
+    let done = false;
+    while (!done) {
+      if (kontinuation instanceof Args) {
+        const { _k } = kontinuation;
         const actual_val: Value<Base> = { k: kontinuation };
-        const next_k: Kont<Base> = _k;
+        const next_k: Continuation<Base> = _k;
         meta.unshift(next_k);
-        if (!("k" in val)) {
-          throw new Error(`expected continuation: ${JSON.stringify(val)}`);
+        if (!("k" in value)) {
+          throw new Error(`expected continuation: ${JSON.stringify(value)}`);
+        } else {
+          kontinuation = value.k;
         }
-        else {
-          kontinuation = val.k;
-        }
-        val = actual_val;
-      }
-      else if ("_let" in kontinuation) {
-        const { _let, _exp, _k } = kontinuation;
-        let { _env } = kontinuation;
-        let frame: Env = this.empty_env();
-        if ("k" in val && "_args" in val.k) {
-          const { _args } = val.k;
+        value = actual_val;
+      } else if (kontinuation instanceof Let) {
+        const { _let, _exp: control, _k } = kontinuation;
+        let { _env: environment } = kontinuation;
+        if ("k" in value && value.k instanceof Args) {
+          const { _args } = value.k;
           for (let i = 0; i < _let.length; i++) {
             const addr: string = this.gensym();
-            frame = frame.bind(_let[i], addr);
+            environment = environment.bind(_let[i], addr);
             store = store.bind(addr, _args[i]);
-            _env = _env.merge(frame);
           }
-        }
-        else {
+        } else {
           const addr: string = this.gensym();
-          frame = frame.bind(_let[0], addr);
-          store = store.bind(addr, val);
-          _env = _env.merge(frame);
+          environment = environment.bind(_let[0], addr);
+          store = store.bind(addr, value);
         }
-        final = {
-          done: false,
+        return {
+          done,
           value: {
-            control: _exp,
-            environment: _env,
+            control,
+            environment,
             store,
             kontinuation: _k,
             meta
           }
         };
-        finished = true;
-      }
-      else {
+      } else {
         if (0 === meta.length) {
-          final = {
-            done: true,
-            value: val
+          done = true;
+          return {
+            done,
+            value
           };
-          finished = true;
-        }
-        else {
-          const k: Kont<Base> = meta.shift() || topk();
-          kontinuation = k;
+        } else {
+          kontinuation = meta.shift() || topk();
         }
       }
     }
-    if ("undefined" === typeof final) {
-      throw new Error("");
-    }
-    return final;
+    throw new Error("");
   }
 
   /**
@@ -754,8 +727,8 @@ class CESKM<Base = null | boolean> {
    * @virtual
    * @public
    */
-  protected empty_env(): Env {
-    return new Env();
+  protected empty_env(env?: Record<string, string | Cbpv>): Env {
+    return new this.envCtor(env);
   }
 
   /**
@@ -764,9 +737,9 @@ class CESKM<Base = null | boolean> {
    * @public
    */
   protected empty_store(): Store<Base> {
-    return new Store();
+    return new this.storeCtor();
   }
 }
 
 export { Args, CESKM, Env, Let, Store, topk, closure, continuation, scalar };
-export type { Kont, State, Top, Value, Valuable };
+export type { Continuation, State, Top, Value };
