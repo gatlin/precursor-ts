@@ -59,11 +59,16 @@ class Env {
    * @param addr_or_expr - Either an address or a definition to bind.
    * @returns This updated environment.
    */
-  public bind(name: string, addr_or_expr: string | Cbpv): this {
-    this.env[name] = addr_or_expr;
+  public bind(name: string, addrOrExpr: string | Cbpv): this {
+    this.env[name] = addrOrExpr;
     return this;
   }
 
+  /**
+   * Permits copying the actual data in the environment to any arbitrary
+   * sub-class of Env.
+   * @see {@link CESKM.emptyEnv}
+   */
   public clone(): Record<string, string | Cbpv> {
     return { ...this.env };
   }
@@ -390,12 +395,12 @@ class CESKM<Base> {
    * @public
    * @virtual
    */
-  protected op(op_sym: string, args: Value<Base>[]): Value<Base> {
+  protected op(opSym: string, args: Value<Base>[]): Value<Base> {
     let s = "";
     for (const arg of args) {
       s += ` ${"v" in arg ? typeof arg.v : "unknown"}`;
     }
-    throw new Error(`bad op or arguments: ${op_sym} - ${s}`);
+    throw new Error(`bad op or arguments: ${opSym} - ${s}`);
   }
 
   /**
@@ -420,7 +425,7 @@ class CESKM<Base> {
    * @virtual
    */
   protected literal(v: Base): Value<Base> {
-    return closure(cbpv_lit(v), this.empty_env());
+    return closure(cbpv_lit(v), this.emptyEnv());
   }
 
   /**
@@ -470,7 +475,7 @@ class CESKM<Base> {
           kontinuation = new Let(
             v,
             body,
-            this.empty_env(environment.clone()),
+            this.emptyEnv(environment.clone()),
             kontinuation
           );
           break;
@@ -535,13 +540,14 @@ class CESKM<Base> {
         case "cbpv_abstract": {
           if (kontinuation instanceof Args) {
             const { args, body } = control;
+            const { _args: vals, _k: nextK } = kontinuation;
             for (let i = 0; i < args.length; i++) {
               const addr = this.gensym();
               environment = environment.bind(args[i], addr);
-              store = store.bind(addr, kontinuation._args[i]);
+              store = store.bind(addr, vals[i]);
             }
             control = body;
-            kontinuation = kontinuation._k;
+            kontinuation = nextK;
             return {
               done,
               value: { control, environment, store, kontinuation, meta }
@@ -584,16 +590,16 @@ class CESKM<Base> {
           if ("_" === expr.v) {
             return continuation(topk());
           } else {
-            const addr_or_expr = env.lookup(expr.v);
-            return "string" === typeof addr_or_expr
-              ? store.lookup(addr_or_expr as string)
-              : closure(addr_or_expr as Cbpv, this.empty_env(env.clone()));
+            const addrOrExpr = env.lookup(expr.v);
+            return "string" === typeof addrOrExpr
+              ? store.lookup(addrOrExpr as string)
+              : closure(addrOrExpr as Cbpv, this.emptyEnv(env.clone()));
           }
         }
         case "cbpv_suspend": {
           const { exp } = expr;
           if (!cbpv_is_positive(exp)) {
-            return closure(exp, this.empty_env(env.clone()));
+            return closure(exp, this.emptyEnv(env.clone()));
           } else {
             expr = exp;
             break;
@@ -639,18 +645,15 @@ class CESKM<Base> {
     let done = false;
     while (!done) {
       if (kontinuation instanceof Args) {
-        const { _k } = kontinuation;
-        const actual_val: Value<Base> = { k: kontinuation };
-        const next_k: Continuation<Base> = _k;
-        meta.unshift(next_k);
+        const actualValue = continuation(kontinuation);
+        meta.unshift(kontinuation._k);
         if (!("k" in value)) {
           throw new Error(`expected continuation: ${JSON.stringify(value)}`);
-        } else {
-          kontinuation = value.k;
         }
-        value = actual_val;
+        kontinuation = value.k;
+        value = actualValue;
       } else if (kontinuation instanceof Let) {
-        const { _let, _exp: control, _k } = kontinuation;
+        const { _let, _exp: control, _k: nextK } = kontinuation;
         let { _env: environment } = kontinuation;
         if ("k" in value && value.k instanceof Args) {
           const { _args } = value.k;
@@ -670,7 +673,7 @@ class CESKM<Base> {
             control,
             environment,
             store,
-            kontinuation: _k,
+            kontinuation: nextK,
             meta
           }
         };
@@ -701,8 +704,8 @@ class CESKM<Base> {
   protected inject(control: Cbpv): State<Base> {
     return {
       control,
-      environment: this.empty_env(),
-      store: this.empty_store(),
+      environment: this.emptyEnv(),
+      store: this.emptyStore(),
       kontinuation: topk(),
       meta: []
     };
@@ -712,14 +715,14 @@ class CESKM<Base> {
    * Monotonically increasing number used to generate unique identifiers.
    * @internal
    */
-  protected gensym_count = 0;
+  protected gensymCount = 0;
 
   /**
    * @returns A freshly **gen**erated **sym**bol. Multi-purpose.
    * @internal
    */
   protected gensym(): string {
-    return `#sym<${this.gensym_count++}>`;
+    return `#sym<${this.gensymCount++}>`;
   }
 
   /**
@@ -727,7 +730,7 @@ class CESKM<Base> {
    * @virtual
    * @public
    */
-  protected empty_env(env?: Record<string, string | Cbpv>): Env {
+  protected emptyEnv(env?: Record<string, string | Cbpv>): Env {
     return new this.envCtor(env);
   }
 
@@ -736,7 +739,7 @@ class CESKM<Base> {
    * @virtual
    * @public
    */
-  protected empty_store(): Store<Base> {
+  protected emptyStore(): Store<Base> {
     return new this.storeCtor();
   }
 }
