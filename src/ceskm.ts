@@ -533,7 +533,8 @@ class CESKM<Base> {
               done,
               value: { control, environment, store, kontinuation, meta }
             };
-          } else {
+          }
+          else {
             return this.continue(val, kontinuation, store, meta);
           }
         }
@@ -589,7 +590,8 @@ class CESKM<Base> {
         case "cbpv_symbol": {
           if ("_" === expr.v) {
             return continuation(topk());
-          } else {
+          }
+          else {
             const addrOrExpr = env.lookup(expr.v);
             return "string" === typeof addrOrExpr
               ? store.lookup(addrOrExpr as string)
@@ -600,7 +602,8 @@ class CESKM<Base> {
           const { exp } = expr;
           if (!cbpv_is_positive(exp)) {
             return closure(exp, this.emptyEnv(env.clone()));
-          } else {
+          }
+          else {
             expr = exp;
             break;
           }
@@ -652,7 +655,8 @@ class CESKM<Base> {
         }
         kontinuation = value.k;
         value = actualValue;
-      } else if (kontinuation instanceof Let) {
+      }
+      else if (kontinuation instanceof Let) {
         const { _let, _exp: control, _k: nextK } = kontinuation;
         let { _env: environment } = kontinuation;
         if ("k" in value && value.k instanceof Args) {
@@ -662,7 +666,8 @@ class CESKM<Base> {
             environment = environment.bind(_let[i], addr);
             store = store.bind(addr, _args[i]);
           }
-        } else {
+        }
+        else {
           const addr: string = this.gensym();
           environment = environment.bind(_let[0], addr);
           store = store.bind(addr, value);
@@ -677,14 +682,16 @@ class CESKM<Base> {
             meta
           }
         };
-      } else {
+      }
+      else {
         if (0 === meta.length) {
           done = true;
           return {
             done,
             value
           };
-        } else {
+        }
+        else {
           kontinuation = meta.shift() || topk();
         }
       }
@@ -722,7 +729,7 @@ class CESKM<Base> {
    * @internal
    */
   protected gensym(): string {
-    return `#sym<${this.gensymCount++}>`;
+    return `#<${this.gensymCount++}>`;
   }
 
   /**

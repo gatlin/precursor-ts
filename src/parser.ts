@@ -29,6 +29,8 @@ import {
   cbpv_if
 } from "./grammar";
 
+type SExpr = boolean | number | string | SExpr[];
+
 /**
  * Parses a string into arrays of *atoms*, or (inductively) other arrays.
  * @remarks
@@ -42,12 +44,11 @@ class Parser {
   protected ast: any[] = [];
   constructor(protected expression: string) {}
 
-  public parse(): any {
-    const ast = this.parse_expression();
-    return ast;
+  public parse(): SExpr {
+    return this.parse_expression();
   }
 
-  protected parse_expression(): any {
+  protected parse_expression(): SExpr {
     this.whitespace();
     while (";" === this.expression[this.cursor]) {
       this.parse_comment();
@@ -59,15 +60,18 @@ class Parser {
     return this.parse_atom();
   }
 
-  protected parse_comment(): any {
-    // this is called before parse_atom and thus before parse_string.
-    // => we may assume we are not in a string.
+  /**
+   * @remarks
+   * Since this is called before {@link parse_atom} and thus before {@link
+   * parse_string} we may assume that we are not currently parsing a string.
+   */
+  protected parse_comment(): void {
     while ("\n" !== this.expression[this.cursor]) {
       this.cursor++;
     }
   }
 
-  protected parse_list(): any {
+  protected parse_list(): SExpr[] {
     this.ast.push([]);
     this.expect("(");
     this.parse_list_entries();
@@ -106,7 +110,7 @@ class Parser {
     return `"${str_body}"`;
   }
 
-  protected parse_atom(): any {
+  protected parse_atom(): SExpr {
     const terminator = /\s+|\)/;
     if ('"' === this.expression[this.cursor]) {
       this.cursor++;
@@ -149,7 +153,7 @@ class Parser {
   }
 
   protected expect(c: string): void {
-    if (this.expression[this.cursor] !== c) {
+    if (c !== this.expression[this.cursor]) {
       throw new Error(
         `Unexpected token: ${this.expression[this.cursor]}, expected ${c}`
       );
