@@ -40,9 +40,7 @@ import {
 class Parser {
   protected cursor = 0;
   protected ast: any[] = [];
-  constructor(
-    protected expression: string
-  ) {}
+  constructor(protected expression: string) {}
 
   public parse(): any {
     const ast = this.parse_expression();
@@ -51,39 +49,46 @@ class Parser {
 
   protected parse_expression(): any {
     this.whitespace();
-    if (';' === this.expression[this.cursor]) {
-      this.parse_comment(); }
-    else if ('(' === this.expression[this.cursor]) {
-      return this.parse_list(); }
-    return this.parse_atom(); }
+    while (";" === this.expression[this.cursor]) {
+      this.parse_comment();
+      this.whitespace();
+    }
+    if ("(" === this.expression[this.cursor]) {
+      return this.parse_list();
+    }
+    return this.parse_atom();
+  }
 
   protected parse_comment(): any {
     // this is called before parse_atom and thus before parse_string.
     // => we may assume we are not in a string.
-    while ('\n' !== this.expression[this.cursor]) {
-      this.cursor++; } }
+    while ("\n" !== this.expression[this.cursor]) {
+      this.cursor++;
+    }
+  }
 
   protected parse_list(): any {
     this.ast.push([]);
-    this.expect('(');
+    this.expect("(");
     this.parse_list_entries();
-    this.expect(')');
-    return this.ast[0]; }
+    this.expect(")");
+    return this.ast[0];
+  }
 
   protected parse_list_entries(): void {
     let finished = false;
     while (!finished) {
       this.whitespace();
-      if (this.expression[this.cursor] === ')') {
+      if (this.expression[this.cursor] === ")") {
         finished = true;
         break;
       }
       let entry = this.parse_expression();
-      if ('' !== entry) {
+      if ("" !== entry) {
         if (Array.isArray(entry)) {
           entry = this.ast.pop();
         }
-        this.ast[this.ast.length-1].push(entry);
+        this.ast[this.ast.length - 1].push(entry);
       }
     }
   }
@@ -97,31 +102,37 @@ class Parser {
       }
       this.cursor++;
     }
-    const str_body = this.expression.slice(start, this.cursor-1);
-    return `"${str_body}"`; }
+    const str_body = this.expression.slice(start, this.cursor - 1);
+    return `"${str_body}"`;
+  }
 
   protected parse_atom(): any {
     const terminator = /\s+|\)/;
     if ('"' === this.expression[this.cursor]) {
       this.cursor++;
-      return this.parse_string(); }
-    let atom: any = '';
-    while (this.expression[this.cursor] &&
-           !terminator.test(this.expression[this.cursor])) {
+      return this.parse_string();
+    }
+    let atom: any = "";
+    while (
+      this.expression[this.cursor] &&
+      !terminator.test(this.expression[this.cursor])
+    ) {
       atom += this.expression[this.cursor];
       this.cursor++;
     }
 
-    if ('' !== atom && !isNaN(atom)) {
+    if ("" !== atom && !isNaN(atom)) {
       atom = Number(<number>atom);
-    }
-    else if ('' !== atom && '#' === atom.charAt(0)) {
+    } else if ("" !== atom && "#" === atom.charAt(0)) {
       const b: string = atom.charAt(1);
-      if ('t' === b) { atom = true; }
-      else if ('f' === b) { atom = false; }
-      else { throw new Error('boolean is either #t or #f'); }
-    }
-    else {
+      if ("t" === b) {
+        atom = true;
+      } else if ("f" === b) {
+        atom = false;
+      } else {
+        throw new Error("boolean is either #t or #f");
+      }
+    } else {
       atom = <string>atom;
     }
     return atom;
@@ -129,8 +140,10 @@ class Parser {
 
   protected whitespace(): void {
     const ws = /^\s+/;
-    while (this.expression[this.cursor] &&
-           ws.test(this.expression[this.cursor])) {
+    while (
+      this.expression[this.cursor] &&
+      ws.test(this.expression[this.cursor])
+    ) {
       this.cursor++;
     }
   }
@@ -159,56 +172,57 @@ class Parser {
 const build_cbpv = (ast: any): Cbpv => {
   if (Array.isArray(ast)) {
     switch (ast[0]) {
-      case 'λ':
-      case '\\': {
+      case "λ":
+      case "\\": {
         if (!Array.isArray(ast[1])) {
-          throw new Error('arguments must be in a list');
+          throw new Error("arguments must be in a list");
         }
         for (const arg of ast[1]) {
-          if ('string' !== typeof arg) {
-            throw new Error('function argument must be a symbol');
+          if ("string" !== typeof arg) {
+            throw new Error("function argument must be a symbol");
           }
         }
         return cbpv_lam(ast[1], build_cbpv(ast[2]));
       }
-      case 'let': {
-        if ('string' === typeof ast[1]) {
-          return cbpv_let(
-            [ast[1]],
-            build_cbpv(ast[2]),
-            build_cbpv(ast[3])
-          );
-        }
-        else if (Array.isArray(ast[1])) {
+      case "let": {
+        if ("string" === typeof ast[1]) {
+          return cbpv_let([ast[1]], build_cbpv(ast[2]), build_cbpv(ast[3]));
+        } else if (Array.isArray(ast[1])) {
           return cbpv_let(
             ast[1] as string[],
             build_cbpv(ast[2]),
             build_cbpv(ast[3])
           );
-        }
-        else {
-          throw new Error(`let must bind to single argument or list of variables`);
+        } else {
+          throw new Error(
+            `let must bind to single argument or list of variables`
+          );
         }
       }
-      case 'letrec': {
+      case "letrec": {
         if (!Array.isArray(ast[1])) {
-          throw new Error('letrec bindings must be a list');
+          throw new Error("letrec bindings must be a list");
         }
-        const bindings: Array<[any,any]> = ast[1].map((binding: [string,any]) => {
-          return [binding[0], build_cbpv(binding[1])];
-        });
+        const bindings: Array<[any, any]> = ast[1].map(
+          (binding: [string, any]) => {
+            return [binding[0], build_cbpv(binding[1])];
+          }
+        );
         return cbpv_letrec(bindings, build_cbpv(ast[2]));
       }
-      case 'shift': {
-        if ('string' !== typeof ast[1]) {
-          throw new Error('continuation variable must be a symbol');
+      case "shift": {
+        if ("string" !== typeof ast[1]) {
+          throw new Error("continuation variable must be a symbol");
         }
         return cbpv_shift(ast[1], build_cbpv(ast[2]));
       }
-      case 'reset': return cbpv_reset(build_cbpv(ast[1]));
-      case '?': return cbpv_resume(build_cbpv(ast[1]));
-      case '!': return cbpv_suspend(build_cbpv(ast[1]));
-      case 'if': {
+      case "reset":
+        return cbpv_reset(build_cbpv(ast[1]));
+      case "?":
+        return cbpv_resume(build_cbpv(ast[1]));
+      case "!":
+        return cbpv_suspend(build_cbpv(ast[1]));
+      case "if": {
         return cbpv_if(
           build_cbpv(ast[1]),
           build_cbpv(ast[2]),
@@ -216,28 +230,23 @@ const build_cbpv = (ast: any): Cbpv => {
         );
       }
       default: {
-        if ('string' === typeof ast[0] && ast[0].startsWith('op:')) {
-          return cbpv_op(
-            ast[0],
-            ast.slice(1).map(build_cbpv)
-          );
-        }
-        else {
-          return cbpv_app(
-            build_cbpv(ast[0]),
-            ast.slice(1).map(build_cbpv)
-          );
+        if ("string" === typeof ast[0] && ast[0].startsWith("op:")) {
+          return cbpv_op(ast[0], ast.slice(1).map(build_cbpv));
+        } else {
+          return cbpv_app(build_cbpv(ast[0]), ast.slice(1).map(build_cbpv));
         }
       }
     }
-  }
-  else {
+  } else {
     switch (typeof ast) {
-      case 'number': return cbpv_lit(<number>ast);
-      case 'boolean': return cbpv_lit(<boolean>ast);
-      case 'string': {
+      case "number":
+        return cbpv_lit(<number>ast);
+      case "boolean":
+        return cbpv_lit(<boolean>ast);
+      case "string": {
         if ('"' === ast.charAt(0)) {
-          return cbpv_lit(<string>ast.substr(1,ast.length-2)); }
+          return cbpv_lit(<string>ast.substr(1, ast.length - 2));
+        }
         return cbpv_sym(<string>ast);
       }
     }
@@ -261,8 +270,4 @@ const parse_cbpv = (source: string): Cbpv => {
   return cbpv;
 };
 
-export {
-  Parser,
-  build_cbpv,
-  parse_cbpv
-};
+export { Parser, build_cbpv, parse_cbpv };
