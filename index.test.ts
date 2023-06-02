@@ -3,7 +3,7 @@ import {
   Env,
   Store,
   scalar,
-  parse_cbpv,
+  parseCbpv,
   cbpv_lit,
   cbpv_op,
   cbpv_is_positive
@@ -41,7 +41,7 @@ class DebugMachine<Val> extends CESKM<Val> {
   }
 
   public run(program: string): Value<Val> {
-    return this.runCbpv(parse_cbpv(program));
+    return this.runCbpv(parseCbpv(program));
   }
 
   public runCbpv(expr: Cbpv): Value<Val> {

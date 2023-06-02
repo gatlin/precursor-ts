@@ -45,19 +45,19 @@ class Parser {
   constructor(protected expression: string) {}
 
   public parse(): SExpr {
-    return this.parse_expression();
+    return this.parseExpression();
   }
 
-  protected parse_expression(): SExpr {
+  protected parseExpression(): SExpr {
     this.whitespace();
     while (";" === this.expression[this.cursor]) {
-      this.parse_comment();
+      this.parseComment();
       this.whitespace();
     }
     if ("(" === this.expression[this.cursor]) {
-      return this.parse_list();
+      return this.parseList();
     }
-    return this.parse_atom();
+    return this.parseAtom();
   }
 
   /**
@@ -65,21 +65,21 @@ class Parser {
    * Since this is called before {@link parse_atom} and thus before {@link
    * parse_string} we may assume that we are not currently parsing a string.
    */
-  protected parse_comment(): void {
+  protected parseComment(): void {
     while ("\n" !== this.expression[this.cursor]) {
       this.cursor++;
     }
   }
 
-  protected parse_list(): SExpr[] {
+  protected parseList(): SExpr[] {
     this.ast.push([]);
     this.expect("(");
-    this.parse_list_entries();
+    this.parseListEntries();
     this.expect(")");
     return this.ast[0];
   }
 
-  protected parse_list_entries(): void {
+  protected parseListEntries(): void {
     let finished = false;
     while (!finished) {
       this.whitespace();
@@ -87,7 +87,7 @@ class Parser {
         finished = true;
         break;
       }
-      let entry = this.parse_expression();
+      let entry = this.parseExpression();
       if ("" !== entry) {
         if (Array.isArray(entry)) {
           entry = this.ast.pop();
@@ -97,7 +97,7 @@ class Parser {
     }
   }
 
-  protected parse_string(): string {
+  protected parseString(): string {
     const start = this.cursor;
     let finished = false;
     while (!finished) {
@@ -106,15 +106,15 @@ class Parser {
       }
       this.cursor++;
     }
-    const str_body = this.expression.slice(start, this.cursor - 1);
-    return `"${str_body}"`;
+    const strBody = this.expression.slice(start, this.cursor - 1);
+    return `"${strBody}"`;
   }
 
-  protected parse_atom(): SExpr {
+  protected parseAtom(): SExpr {
     const terminator = /\s+|\)/;
     if ('"' === this.expression[this.cursor]) {
       this.cursor++;
-      return this.parse_string();
+      return this.parseString();
     }
     let atom: any = "";
     while (
@@ -173,7 +173,7 @@ class Parser {
  * @category Language & Syntax
  * @internal
  */
-const build_cbpv = (ast: any): Cbpv => {
+const buildCbpv = (ast: unknown): Cbpv => {
   if (Array.isArray(ast)) {
     switch (ast[0]) {
       case "λ":
@@ -186,16 +186,16 @@ const build_cbpv = (ast: any): Cbpv => {
             throw new Error("function argument must be a symbol");
           }
         }
-        return cbpv_lam(ast[1], build_cbpv(ast[2]));
+        return cbpv_lam(ast[1], buildCbpv(ast[2]));
       }
       case "let": {
         if ("string" === typeof ast[1]) {
-          return cbpv_let([ast[1]], build_cbpv(ast[2]), build_cbpv(ast[3]));
+          return cbpv_let([ast[1]], buildCbpv(ast[2]), buildCbpv(ast[3]));
         } else if (Array.isArray(ast[1])) {
           return cbpv_let(
             ast[1] as string[],
-            build_cbpv(ast[2]),
-            build_cbpv(ast[3])
+            buildCbpv(ast[2]),
+            buildCbpv(ast[3])
           );
         } else {
           throw new Error(
@@ -209,35 +209,31 @@ const build_cbpv = (ast: any): Cbpv => {
         }
         const bindings: Array<[any, any]> = ast[1].map(
           (binding: [string, any]) => {
-            return [binding[0], build_cbpv(binding[1])];
+            return [binding[0], buildCbpv(binding[1])];
           }
         );
-        return cbpv_letrec(bindings, build_cbpv(ast[2]));
+        return cbpv_letrec(bindings, buildCbpv(ast[2]));
       }
       case "shift": {
         if ("string" !== typeof ast[1]) {
           throw new Error("continuation variable must be a symbol");
         }
-        return cbpv_shift(ast[1], build_cbpv(ast[2]));
+        return cbpv_shift(ast[1], buildCbpv(ast[2]));
       }
       case "reset":
-        return cbpv_reset(build_cbpv(ast[1]));
+        return cbpv_reset(buildCbpv(ast[1]));
       case "?":
-        return cbpv_resume(build_cbpv(ast[1]));
+        return cbpv_resume(buildCbpv(ast[1]));
       case "!":
-        return cbpv_suspend(build_cbpv(ast[1]));
+        return cbpv_suspend(buildCbpv(ast[1]));
       case "if": {
-        return cbpv_if(
-          build_cbpv(ast[1]),
-          build_cbpv(ast[2]),
-          build_cbpv(ast[3])
-        );
+        return cbpv_if(buildCbpv(ast[1]), buildCbpv(ast[2]), buildCbpv(ast[3]));
       }
       default: {
         if ("string" === typeof ast[0] && ast[0].startsWith("op:")) {
-          return cbpv_op(ast[0], ast.slice(1).map(build_cbpv));
+          return cbpv_op(ast[0], ast.slice(1).map(buildCbpv));
         } else {
-          return cbpv_app(build_cbpv(ast[0]), ast.slice(1).map(build_cbpv));
+          return cbpv_app(buildCbpv(ast[0]), ast.slice(1).map(buildCbpv));
         }
       }
     }
@@ -268,10 +264,10 @@ const build_cbpv = (ast: any): Cbpv => {
  * @category Language & Syntax
  * @public
  */
-const parse_cbpv = (source: string): Cbpv => {
+const parseCbpv = (source: string): Cbpv => {
   const parser = new Parser(source);
-  const cbpv = build_cbpv(parser.parse());
+  const cbpv = buildCbpv(parser.parse());
   return cbpv;
 };
 
-export { Parser, build_cbpv, parse_cbpv };
+export { Parser, buildCbpv, parseCbpv };
