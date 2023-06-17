@@ -190,7 +190,7 @@ const buildCbpv = (ast: unknown): Cbpv => {
       }
       case "let": {
         if ("string" === typeof ast[1]) {
-          return cbpv_let([ast[1]], buildCbpv(ast[2]), buildCbpv(ast[3]));
+          return cbpv_let(ast[1], buildCbpv(ast[2]), buildCbpv(ast[3]));
         } else if (Array.isArray(ast[1])) {
           return cbpv_let(
             ast[1] as string[],

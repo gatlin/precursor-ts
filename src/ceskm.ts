@@ -35,7 +35,7 @@ import type { Cbpv } from "./grammar";
  * @category Environment & Store
  */
 class Env {
-  constructor(protected env: { [name: string]: string | Cbpv } = {}) {}
+  constructor(protected env: Record<string, string | Cbpv> = {}) {}
 
   /**
    * Lookup a name to retrieve either a `string` address or {@link Cbpv}
@@ -180,14 +180,13 @@ class Args<T> {
  */
 class Let<T> {
   /**
-   * @param _let - An array of string identifiers unbound in the expression.
    * @param _exp - The {@link Cbpv} expression we are enclosing.
    * @param _env - An {@link Env | environment} binding free symbols in the
    * expression.
    * @param _k - The continuation following this one.
    */
   constructor(
-    public readonly _let: string[],
+    public readonly _let: string | string[],
     public readonly _exp: Cbpv,
     public readonly _env: Env,
     public readonly _k: Continuation<T>
@@ -263,7 +262,7 @@ const closure = <T>(_exp: Cbpv, _env: Env): Value<T> =>
  * @public
  */
 class Store<T> {
-  constructor(protected store: { [addr: string]: Value<T> } = {}) {}
+  constructor(protected store: Record<string, Value<T>> = {}) {}
 
   /**
    * Bind a value to an address.
@@ -655,7 +654,7 @@ class CESKM<Base> {
       } else if (kontinuation instanceof Let) {
         const { _let, _exp: control, _k: nextK } = kontinuation;
         let { _env: environment } = kontinuation;
-        if ("k" in value && value.k instanceof Args) {
+        if (Array.isArray(_let) && "k" in value && value.k instanceof Args) {
           const { _args } = value.k;
           for (let i = 0; i < _let.length; i++) {
             const addr: string = this.gensym();

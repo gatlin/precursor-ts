@@ -23,7 +23,7 @@ type Cbpv =
   | { tag: "cbpv_resume"; v: Cbpv }
   | { tag: "cbpv_abstract"; args: string[]; body: Cbpv }
   | { tag: "cbpv_apply"; op: Cbpv; erands: Cbpv[] }
-  | { tag: "cbpv_let"; v: string[]; exp: Cbpv; body: Cbpv }
+  | { tag: "cbpv_let"; v: string[] | string; exp: Cbpv; body: Cbpv }
   | { tag: "cbpv_letrec"; bindings: [string, Cbpv][]; body: Cbpv }
   | { tag: "cbpv_reset"; exp: Cbpv }
   | { tag: "cbpv_shift"; karg: string; body: Cbpv }
@@ -80,7 +80,7 @@ const cbpv_app = (op: Cbpv, erands: Cbpv[]): Cbpv => ({
  * @category Language & Syntax
  * @public
  */
-const cbpv_let = (v: string[], exp: Cbpv, body: Cbpv): Cbpv => ({
+const cbpv_let = (v: string[] | string, exp: Cbpv, body: Cbpv): Cbpv => ({
   tag: "cbpv_let",
   v,
   exp,
