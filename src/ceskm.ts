@@ -180,6 +180,7 @@ class Args<T> {
  */
 class Let<T> {
   /**
+   * @param _let - The symbol or symbols unbound (free) in the expression.
    * @param _exp - The {@link Cbpv} expression we are enclosing.
    * @param _env - An {@link Env | environment} binding free symbols in the
    * expression.
