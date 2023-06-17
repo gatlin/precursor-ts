@@ -189,14 +189,8 @@ const buildCbpv = (ast: unknown): Cbpv => {
         return cbpv_lam(ast[1], buildCbpv(ast[2]));
       }
       case "let": {
-        if ("string" === typeof ast[1]) {
+        if ("string" === typeof ast[1] || Array.isArray(ast[1])) {
           return cbpv_let(ast[1], buildCbpv(ast[2]), buildCbpv(ast[3]));
-        } else if (Array.isArray(ast[1])) {
-          return cbpv_let(
-            ast[1] as string[],
-            buildCbpv(ast[2]),
-            buildCbpv(ast[3])
-          );
         } else {
           throw new Error(
             `let must bind to single argument or list of variables`
