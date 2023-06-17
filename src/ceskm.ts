@@ -654,18 +654,12 @@ class CESKM<Base> {
       } else if (kontinuation instanceof Let) {
         const { _let, _exp: control, _k: nextK } = kontinuation;
         let { _env: environment } = kontinuation;
-        if ("k" in value && value.k instanceof Args) {
-          if (Array.isArray(_let)) {
-            const { _args } = value.k;
-            for (let i = 0; i < _let.length; i++) {
-              const addr: string = this.gensym();
-              environment = environment.bind(_let[i], addr);
-              store = store.bind(addr, _args[i]);
-            }
-          } else {
+        if ("k" in value && value.k instanceof Args && Array.isArray(_let)) {
+          const { _args } = value.k;
+          for (let i = 0; i < _let.length; i++) {
             const addr: string = this.gensym();
-            environment = environment.bind(_let[0], addr);
-            store = store.bind(addr, value);
+            environment = environment.bind(_let[i], addr);
+            store = store.bind(addr, _args[i]);
           }
         } else {
           const addr: string = this.gensym();
