@@ -158,9 +158,7 @@ class Args<T> {
  * ```json
  * {
  *   "k": {
- *     "_let": [
- *       "x"
- *     ],
+ *     "_let": "x",
  *     "_exp": {
  *       "tag": "cbpv_symbol",
  *       "v": "x"
