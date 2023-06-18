@@ -653,20 +653,28 @@ class CESKM<Base> {
       } else if (kontinuation instanceof Let) {
         const { _let, _exp: control, _k: nextK } = kontinuation;
         let { _env: environment } = kontinuation;
-        if ("k" in value && value.k instanceof Args) {
-          if (Array.isArray(_let)) {
-            const { _args } = value.k;
-            for (let i = 0; i < _let.length; i++) {
-              const addr: string = this.gensym();
-              environment = environment.bind(_let[i], addr);
-              store = store.bind(addr, _args[i]);
-            }
-          } else {
+        if ("k" in value && value.k instanceof Args && Array.isArray(_let)) {
+          // case 1: value is wrapped Args, we are binding multiple symbols
+          const { _args } = value.k;
+          for (let i = 0; i < _let.length; i++) {
             const addr: string = this.gensym();
-            environment = environment.bind(_let, addr);
-            store = store.bind(addr, value.k._args[0]);
+            environment = environment.bind(_let[i], addr);
+            store = store.bind(addr, _args[i]);
           }
+        } else if (
+          "k" in value &&
+          value.k instanceof Args &&
+          1 === value.k._args.length
+        ) {
+          // case 2: value is wrapped Args len = 1, we are binding 1 symbol
+          const addr: string = this.gensym();
+          environment = environment.bind(
+            Array.isArray(_let) ? _let[0] : _let,
+            addr
+          );
+          store = store.bind(addr, value.k._args[0]);
         } else {
+          // case 3: value is value, we are binding 1 symbol
           const addr: string = this.gensym();
           environment = environment.bind(
             Array.isArray(_let) ? _let[0] : _let,
